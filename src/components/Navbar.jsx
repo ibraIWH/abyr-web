@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
 
 export default function Navbar() {
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth();
   const [cartCount, setCartCount] = useState(0);
 
   const updateCartCount = () => {
@@ -12,20 +13,13 @@ export default function Navbar() {
   };
 
   useEffect(() => {
-    const stored = localStorage.getItem("user");
-    if (stored) setUser(JSON.parse(stored));
     updateCartCount();
     window.addEventListener("cartUpdated", updateCartCount);
     return () => window.removeEventListener("cartUpdated", updateCartCount);
   }, []);
 
   const handleSignOut = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("cart");
-    window.dispatchEvent(new Event("cartUpdated"));
-    setUser(null);
-    window.location.href = "/";
+    logout();
   };
 
   return (
