@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
 import AddressesPage from "./AddressesPage";
 import FavouritesPage from "./FavouritesPage";
@@ -9,9 +10,9 @@ import OrdersPage from "./OrdersPage";
 import SettingsPage from "./SettingsPage";
 
 export default function AccountPage() {
-  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState("account"); // 'account', 'orders', 'favourites', 'addresses', 'settings'
+  const [activeSection, setActiveSection] = useState("account");
 
   if (!user) {
     return (
@@ -29,6 +30,10 @@ export default function AccountPage() {
     );
   }
 
+  const handleSignOut = () => {
+    logout(); // clears token, user, cart, and redirects to home
+  };
+
   return (
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
@@ -44,7 +49,6 @@ export default function AccountPage() {
               <div style={{ ...F(10, 400, "#888") }}>{user.email}</div>
             </div>
           </div>
-
           {[
             { label: "My account", key: "account" },
             { label: "Orders", key: "orders" },
@@ -52,35 +56,15 @@ export default function AccountPage() {
             { label: "Addresses", key: "addresses" },
             { label: "Settings", key: "settings" },
           ].map((item) => (
-            <div
-              key={item.key}
-              onClick={() => setActiveSection(item.key)}
-              style={{
-                padding: "12px 0",
-                borderBottom: "0.5px solid #F0EDE8",
-                ...F(11, 400, activeSection === item.key ? C.brandRed : "#888"),
-                cursor: "pointer",
-              }}
-            >
+            <div key={item.key} onClick={() => setActiveSection(item.key)} style={{ padding: "12px 0", borderBottom: "0.5px solid #F0EDE8", ...F(11, 400, activeSection === item.key ? C.brandRed : "#888"), cursor: "pointer" }}>
               {item.label}
             </div>
           ))}
-
-          <div
-            onClick={() => {
-              localStorage.removeItem("token");
-              localStorage.removeItem("user");
-              sessionStorage.removeItem("cart");
-              window.dispatchEvent(new Event("cartUpdated"));
-              navigate("/");
-            }}
-            style={{ marginTop: 14, paddingTop: 14, borderTop: `0.5px solid ${C.border}`, ...F(11, 400, C.red), cursor: "pointer" }}
-          >
+          <div onClick={handleSignOut} style={{ marginTop: 14, paddingTop: 14, borderTop: `0.5px solid ${C.border}`, ...F(11, 400, C.red), cursor: "pointer" }}>
             Sign Out
           </div>
         </div>
-
-        {/* Main content – switches between sub‑pages */}
+        {/* Main content */}
         <div>
           {activeSection === "account" && (
             <div>
