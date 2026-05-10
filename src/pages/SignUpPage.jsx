@@ -20,7 +20,7 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       await register(name, email, password);
-      navigate("/");
+      navigate("/verify-email");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed. Please try again.");
     } finally {
