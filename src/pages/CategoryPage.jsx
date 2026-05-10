@@ -1,12 +1,10 @@
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import api from "../api";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import ProductCard from "../components/ProductCard";
 import { C, F, Ser } from "../designTokens";
-
-const API_BASE = "https://abbayah-backend.onrender.com/api";
 
 export default function CategoryPage() {
   const { slug } = useParams();
@@ -14,8 +12,7 @@ export default function CategoryPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios
-      .get(`${API_BASE}/products`, { params: { category: slug } })
+    api.get("/products", { params: { category: slug } })
       .then((res) => setProducts(res.data))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));

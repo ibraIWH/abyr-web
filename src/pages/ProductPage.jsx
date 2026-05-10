@@ -1,11 +1,9 @@
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import api from "../api";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import { C, F, Ser } from "../designTokens";
-
-const API_BASE = "https://abbayah-backend.onrender.com/api";
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -15,7 +13,7 @@ export default function ProductPage() {
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
-    axios.get(`${API_BASE}/products/${id}`)
+    api.get(`/products/${id}`)
       .then(res => setProduct(res.data))
       .catch(err => console.error(err))
       .finally(() => setLoading(false));

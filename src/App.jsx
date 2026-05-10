@@ -30,6 +30,8 @@ export default function App() {
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/order-confirmed" element={<OrderConfirmedPage />} />
         <Route path="/tracking" element={<TrackingPage />} />
+        <Route path="/verify-email" element={<EmailVerifyPage />} />
+        <Route path="/search" element={<SearchPage />} />
 
         {/* Protected routes (must be logged in) */}
         <Route
