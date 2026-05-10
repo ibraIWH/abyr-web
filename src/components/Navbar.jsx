@@ -28,8 +28,7 @@ export default function Navbar() {
         <Link to="/" style={{ ...Ser(28, 300, C.ink), textDecoration: "none" }}>
           abyr
         </Link>
-        <Link to={`/search?q=${encodeURIComponent(searchTerm)}`}>Search</Link>
-
+        <Link to="/search" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>Search</Link>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           {user ? (
             <>
