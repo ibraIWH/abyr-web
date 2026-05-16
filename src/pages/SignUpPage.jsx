@@ -21,7 +21,7 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       await register(name, email, password, phone || undefined);
-      navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+      navigate("/account");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed.");
     } finally {

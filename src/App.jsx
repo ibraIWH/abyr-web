@@ -12,6 +12,7 @@ import HomePage from "./pages/HomePage";
 import OrderConfirmedPage from "./pages/OrderConfirmedPage";
 import OrdersPage from "./pages/OrdersPage";
 import PaymentPage from "./pages/PaymentPage";
+import PhoneVerifyPage from "./pages/PhoneVerifyPage";
 import ProductPage from "./pages/ProductPage";
 import SearchPage from "./pages/SearchPage"; // ← ADDED
 import SettingsPage from "./pages/SettingsPage";
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/tracking" element={<TrackingPage />} />
         <Route path="/verify-email/:token" element={<EmailVerifyPage />} />
         <Route path="/verify-email" element={<EmailVerifyPage />} />
+        <Route path="/verify-phone" element={<ProtectedRoute><PhoneVerifyPage /></ProtectedRoute>} />
 
         {/* Protected routes (must be logged in) */}
         <Route

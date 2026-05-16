@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import api from "../api";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
@@ -13,6 +14,8 @@ export default function AccountPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("account");
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [emailMsg, setEmailMsg] = useState("");
 
   if (!user) {
     return (
@@ -31,7 +34,20 @@ export default function AccountPage() {
   }
 
   const handleSignOut = () => {
-    logout(); // clears token, user, cart, and redirects to home
+    logout();
+  };
+
+  const resendVerificationEmail = async () => {
+    setResendingEmail(true);
+    setEmailMsg("");
+    try {
+      await api.post("/auth/resend-email-verification");
+      setEmailMsg("Verification email sent! Check your inbox.");
+    } catch (err) {
+      setEmailMsg(err.response?.data?.message || "Failed to resend.");
+    } finally {
+      setResendingEmail(false);
+    }
   };
 
   return (
@@ -49,6 +65,7 @@ export default function AccountPage() {
               <div style={{ ...F(10, 400, "#888") }}>{user.email}</div>
             </div>
           </div>
+
           {[
             { label: "My account", key: "account" },
             { label: "Orders", key: "orders" },
@@ -56,25 +73,69 @@ export default function AccountPage() {
             { label: "Addresses", key: "addresses" },
             { label: "Settings", key: "settings" },
           ].map((item) => (
-            <div key={item.key} onClick={() => setActiveSection(item.key)} style={{ padding: "12px 0", borderBottom: "0.5px solid #F0EDE8", ...F(11, 400, activeSection === item.key ? C.brandRed : "#888"), cursor: "pointer" }}>
+            <div key={item.key} onClick={() => setActiveSection(item.key)}
+              style={{ padding: "12px 0", borderBottom: "0.5px solid #F0EDE8", ...F(11, 400, activeSection === item.key ? C.brandRed : "#888"), cursor: "pointer" }}>
               {item.label}
             </div>
           ))}
-          <div onClick={handleSignOut} style={{ marginTop: 14, paddingTop: 14, borderTop: `0.5px solid ${C.border}`, ...F(11, 400, C.red), cursor: "pointer" }}>
+          <div onClick={handleSignOut}
+            style={{ marginTop: 14, paddingTop: 14, borderTop: `0.5px solid ${C.border}`, ...F(11, 400, C.red), cursor: "pointer" }}>
             Sign Out
           </div>
         </div>
+
         {/* Main content */}
         <div>
           {activeSection === "account" && (
             <div>
-              <div style={{ ...Ser(28, 300, C.ink), marginBottom: 28 }}>My Account</div>
+              <div style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>My Account</div>
+
+              {/* Email Verification Warning */}
+              {!user.emailVerified && (
+                <div style={{ background: "#FFF3E0", border: `0.5px solid ${C.amber}`, padding: "14px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ ...F(11, 500, C.amber), marginBottom: 4 }}>⚠️ Email not verified</div>
+                    <div style={{ ...F(10, 400, "#888") }}>Check your inbox or resend the verification link.</div>
+                    {emailMsg && <div style={{ ...F(10, 400, "#2E7D32"), marginTop: 4 }}>{emailMsg}</div>}
+                  </div>
+                  <button onClick={resendVerificationEmail} disabled={resendingEmail}
+                    style={{ background: C.amber, color: C.white, border: "none", padding: "6px 14px", ...F(10, 500), cursor: "pointer", letterSpacing: 1 }}>
+                    {resendingEmail ? "Sending..." : "Resend"}
+                  </button>
+                </div>
+              )}
+
+              {/* Phone Verification Warning */}
+              {!user.phoneVerified && (
+                <div style={{ background: "#FFF3E0", border: `0.5px solid ${C.amber}`, padding: "14px 16px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ ...F(11, 500, C.amber), marginBottom: 4 }}>📱 Phone not verified</div>
+                    <div style={{ ...F(10, 400, "#888") }}>Verify your phone number to enable SMS updates.</div>
+                  </div>
+                  <button onClick={() => navigate("/verify-phone")}
+                    style={{ background: C.amber, color: C.white, border: "none", padding: "6px 14px", ...F(10, 500), cursor: "pointer", letterSpacing: 1 }}>
+                    Verify Now
+                  </button>
+                </div>
+              )}
+
+              {/* User Info Fields */}
               {[["Full Name", user.name], ["Email", user.email], ["Role", user.role]].map(([label, val], i) => (
                 <div key={i} style={{ marginBottom: 18 }}>
                   <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>{label}</div>
                   <div style={{ borderBottom: "1px solid #DDD", paddingBottom: 10, ...F(13, 400, C.ink) }}>{val}</div>
                 </div>
               ))}
+
+              {/* Verification Status */}
+              <div style={{ marginTop: 12 }}>
+                <div style={{ ...F(11, 400, C.ink), marginBottom: 6 }}>
+                  Email: {user.emailVerified ? "✅ Verified" : "❌ Not verified"}
+                </div>
+                <div style={{ ...F(11, 400, C.ink) }}>
+                  Phone: {user.phoneVerified ? "✅ Verified" : (user.phone ? "❌ Not verified" : "❌ Not set")}
+                </div>
+              </div>
             </div>
           )}
           {activeSection === "orders" && <OrdersPage />}
