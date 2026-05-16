@@ -11,17 +11,25 @@ export default function EmailVerifyPage() {
   const navigate = useNavigate();
   const [resending, setResending] = useState(false);
   const [message, setMessage] = useState("");
+  const [verifying, setVerifying] = useState(false);
 
-  // Auto-verify if the URL contains the token
   useEffect(() => {
     const token = window.location.pathname.split("/verify-email/")[1];
     if (token) {
-      api.post(`/auth/verify-email/${token}`)
+      setVerifying(true);
+      setMessage("Verifying your email...");
+      api
+        .post(`/auth/verify-email/${token}`)
         .then(() => {
-          setMessage("Email verified! Redirecting...");
+          setMessage("Email verified! Redirecting to home...");
           setTimeout(() => navigate("/"), 3000);
         })
-        .catch(() => setMessage("Invalid or expired link."));
+        .catch((err) => {
+          setMessage(
+            err.response?.data?.message || "Invalid or expired link."
+          );
+        })
+        .finally(() => setVerifying(false));
     }
   }, [navigate]);
 
@@ -48,26 +56,37 @@ export default function EmailVerifyPage() {
             </svg>
           </div>
           <div style={{ ...Ser(32, 300, C.ink), marginBottom: 12 }}>Verify your email</div>
-          <p style={{ ...F(13, 400, "#888"), lineHeight: 1.8, marginBottom: 8 }}>
-            We sent a verification link to <strong style={{ color: C.ink }}>{email}</strong>.
-          </p>
-          {message && <div style={{ background: "#E8F5E9", color: "#2E7D32", padding: 10, marginBottom: 16, ...F(11, 400) }}>{message}</div>}
-          <button
-            onClick={() => navigate("/")}
-            style={{
-              width: "100%", maxWidth: 320, margin: "0 auto", padding: "14px",
-              background: C.brandRed, color: C.cream, border: "none",
-              ...F(11, 500, C.cream), letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", marginBottom: 16
-            }}
-          >
-            Continue Shopping
-          </button>
-          <div style={{ ...F(11, 400, "#888") }}>
-            Didn't receive the email?{" "}
-            <span onClick={handleResend} style={{ color: C.brandRed, cursor: "pointer", fontWeight: 500 }}>
-              {resending ? "Resending..." : "Resend"}
-            </span>
-          </div>
+
+          {verifying ? (
+            <p style={{ ...F(14, 400, "#888") }}>Verifying your email...</p>
+          ) : (
+            <>
+              <p style={{ ...F(13, 400, "#888"), lineHeight: 1.8, marginBottom: 8 }}>
+                We sent a verification link to <strong style={{ color: C.ink }}>{email}</strong>.
+              </p>
+              {message && (
+                <div style={{ background: "#E8F5E9", color: "#2E7D32", padding: 10, marginBottom: 16, ...F(11, 400) }}>
+                  {message}
+                </div>
+              )}
+              <button
+                onClick={() => navigate("/")}
+                style={{
+                  width: "100%", maxWidth: 320, margin: "0 auto", padding: "14px",
+                  background: C.brandRed, color: C.cream, border: "none",
+                  ...F(11, 500, C.cream), letterSpacing: 2, textTransform: "uppercase", cursor: "pointer", marginBottom: 16
+                }}
+              >
+                Continue Shopping
+              </button>
+              <div style={{ ...F(11, 400, "#888") }}>
+                Didn't receive the email?{" "}
+                <span onClick={handleResend} style={{ color: C.brandRed, cursor: "pointer", fontWeight: 500 }}>
+                  {resending ? "Resending..." : "Resend"}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
       <Footer />

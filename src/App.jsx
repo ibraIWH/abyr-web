@@ -33,6 +33,8 @@ export default function App() {
         <Route path="/search" element={<SearchPage />} />
         <Route path="/order-confirmed" element={<OrderConfirmedPage />} />
         <Route path="/tracking" element={<TrackingPage />} />
+        <Route path="/verify-email/:token" element={<EmailVerifyPage />} />
+        <Route path="/verify-email" element={<EmailVerifyPage />} />
 
         {/* Protected routes (must be logged in) */}
         <Route
