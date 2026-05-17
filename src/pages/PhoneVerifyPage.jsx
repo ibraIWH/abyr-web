@@ -11,7 +11,7 @@ export default function PhoneVerifyPage() {
   const navigate = useNavigate();
   const [phone, setPhone] = useState(user?.phone || "");
   const [code, setCode] = useState("");
-  const [step, setStep] = useState("phone"); // "phone" or "code"
+  const [step, setStep] = useState("phone");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -37,11 +37,16 @@ export default function PhoneVerifyPage() {
     setLoading(true);
     setMessage("");
     try {
-      await api.post("/auth/send-sms", { phone });
+      const res = await api.post("/auth/send-sms", { phone });
+      setMessage(res.data.message || "Code sent!");
       setStep("code");
-      setMessage("Verification code sent to your phone.");
     } catch (err) {
-      setMessage(err.response?.data?.message || "Failed to send SMS.");
+      const errorMsg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to send SMS. Please try again.";
+      setMessage(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -52,8 +57,8 @@ export default function PhoneVerifyPage() {
     setLoading(true);
     setMessage("");
     try {
-      await api.post("/auth/verify-sms", { code });
-      setMessage("Phone verified successfully! Redirecting...");
+      const res = await api.post("/auth/verify-sms", { code });
+      setMessage(res.data.message || "Phone verified! Redirecting...");
       setTimeout(() => navigate("/account"), 2000);
     } catch (err) {
       setMessage(err.response?.data?.message || "Invalid code.");
@@ -77,7 +82,7 @@ export default function PhoneVerifyPage() {
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+966XXXXXXXXX"
+                placeholder="+9665XXXXXXXX"
                 style={{ width: "100%", borderBottom: "1px solid #CCC", padding: "8px 0", marginBottom: 20, ...F(13, 400, C.ink), outline: "none", background: "transparent" }}
                 type="tel"
               />

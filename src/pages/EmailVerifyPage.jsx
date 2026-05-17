@@ -13,6 +13,7 @@ export default function EmailVerifyPage() {
   const [message, setMessage] = useState("");
   const [verifying, setVerifying] = useState(false);
 
+  // Auto-verify if the URL contains the token
   useEffect(() => {
     const token = window.location.pathname.split("/verify-email/")[1];
     if (token) {
@@ -22,12 +23,11 @@ export default function EmailVerifyPage() {
         .post(`/auth/verify-email/${token}`)
         .then(() => {
           setMessage("Email verified! Redirecting to home...");
+          window.dispatchEvent(new Event("userUpdated"));   // <-- update user in context
           setTimeout(() => navigate("/"), 3000);
         })
         .catch((err) => {
-          setMessage(
-            err.response?.data?.message || "Invalid or expired link."
-          );
+          setMessage(err.response?.data?.message || "Invalid or expired link.");
         })
         .finally(() => setVerifying(false));
     }

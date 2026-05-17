@@ -7,21 +7,29 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // On mount, check if token exists and fetch user
+  // Fetch user on mount
   useEffect(() => {
     const token = localStorage.getItem("abyr_token");
     if (token) {
-      // Fetch user profile
       api.get("/auth/me")
         .then(res => setUser(res.data))
-        .catch(() => {
-          // Token invalid or expired
-          localStorage.removeItem("abyr_token");
-        })
+        .catch(() => localStorage.removeItem("abyr_token"))
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
+  }, []);
+
+  // Listen for user updates (e.g., after email verification)
+  useEffect(() => {
+    const handleUpdate = () => {
+      const token = localStorage.getItem("abyr_token");
+      if (token) {
+        api.get("/auth/me").then(res => setUser(res.data));
+      }
+    };
+    window.addEventListener("userUpdated", handleUpdate);
+    return () => window.removeEventListener("userUpdated", handleUpdate);
   }, []);
 
   const login = async (email, password) => {
@@ -32,8 +40,8 @@ export function AuthProvider({ children }) {
     return userData;
   };
 
-  const register = async (name, email, password) => {
-    const res = await api.post("/auth/register", { name, email, password });
+  const register = async (name, email, password, phone) => {
+    const res = await api.post("/auth/register", { name, email, password, phone });
     const { token, user: userData } = res.data;
     localStorage.setItem("abyr_token", token);
     setUser(userData);
@@ -42,10 +50,10 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem("abyr_token");
-    sessionStorage.removeItem("cart");     // clear cart on logout
+    sessionStorage.removeItem("cart");
     setUser(null);
     window.dispatchEvent(new Event("cartUpdated"));
-    window.location.href = "/";           // full reload to reset everything
+    window.location.href = "/";
   };
 
   return (
