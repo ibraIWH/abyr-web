@@ -3,14 +3,18 @@ import { Link, useParams } from "react-router-dom";
 import api from "../api";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
 
 export default function ProductPage() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState("M");
   const [added, setAdded] = useState(false);
+  const [isFav, setIsFav] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
 
   useEffect(() => {
     api.get(`/products/${id}`)
@@ -19,6 +23,17 @@ export default function ProductPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Check favourite status
+  useEffect(() => {
+    if (!user) return;
+    api.get("/favourites")
+      .then(res => {
+        const found = res.data.some(fav => fav.product._id === id);
+        setIsFav(found);
+      })
+      .catch(() => {});
+  }, [user, id]);
+
   const handleAddToCart = () => {
     const cart = JSON.parse(sessionStorage.getItem("cart") || "[]");
     cart.push({ ...product, size: selectedSize, quantity: 1 });
@@ -26,6 +41,24 @@ export default function ProductPage() {
     window.dispatchEvent(new Event("cartUpdated"));
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+  };
+
+  const toggleFavourite = async () => {
+    if (!user) return;
+    setFavLoading(true);
+    try {
+      if (isFav) {
+        await api.delete(`/favourites/${product._id}`);
+        setIsFav(false);
+      } else {
+        await api.post("/favourites", { productId: product._id });
+        setIsFav(true);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFavLoading(false);
+    }
   };
 
   if (loading) return <div style={{ textAlign: "center", padding: 80, ...F(14, 400, "#888") }}>Loading...</div>;
@@ -52,6 +85,30 @@ export default function ProductPage() {
           <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>{product.category}</div>
           <h1 style={{ ...Ser(36, 300, C.ink), lineHeight: 1.1, marginBottom: 8 }}>{product.name}</h1>
           <div style={{ ...Ser(28, 300, C.tan), marginBottom: 24 }}>SAR {parseFloat(product.price).toFixed(2)}</div>
+
+          {/* Favourite button */}
+          {user && (
+            <button
+              onClick={toggleFavourite}
+              disabled={favLoading}
+              style={{
+                background: "none",
+                border: `0.5px solid ${isFav ? C.brandRed : C.border}`,
+                padding: "8px 16px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+                marginBottom: 18,
+                ...F(11, 400, isFav ? C.brandRed : "#888"),
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={isFav ? C.brandRed : "none"} stroke={isFav ? C.brandRed : "#888"} strokeWidth="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+              {isFav ? "Remove from Favourites" : "Add to Favourites"}
+            </button>
+          )}
 
           <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 10 }}>Size</div>
           <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
