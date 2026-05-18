@@ -7,7 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user on mount
+  // Fetch user on mount if token exists
   useEffect(() => {
     const token = localStorage.getItem("abyr_token");
     if (token) {
@@ -41,7 +41,12 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (name, email, password, phone) => {
-    const res = await api.post("/auth/register", { name, email, password, phone });
+    const res = await api.post("/auth/register", {
+      name,
+      email,
+      password,
+      phone: phone || undefined,  // send phone only if provided
+    });
     const { token, user: userData } = res.data;
     localStorage.setItem("abyr_token", token);
     setUser(userData);
