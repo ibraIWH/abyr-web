@@ -103,6 +103,7 @@ export default function HomePage() {
         )}
       </div>
       <TestimonialsSection />
+      <NewsletterSection />
 
       <Footer />
     </div>

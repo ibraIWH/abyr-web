@@ -37,6 +37,7 @@ export default function App() {
         <Route path="/verify-email/:token" element={<EmailVerifyPage />} />
         <Route path="/verify-email" element={<EmailVerifyPage />} />
         <Route path="/verify-phone" element={<ProtectedRoute><PhoneVerifyPage /></ProtectedRoute>} />
+        <Route path="/size-guide" element={<SizeGuidePage />} />
 
         {/* Protected routes (must be logged in) */}
         <Route

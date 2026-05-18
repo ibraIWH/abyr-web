@@ -4,6 +4,7 @@ import api from "../api";
 import Breadcrumb from "../components/Breadcrumb";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import { addToRecentlyViewed } from "../components/RecentlyViewed";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
 
@@ -21,7 +22,10 @@ export default function ProductPage() {
 
   useEffect(() => {
     api.get(`/products/${id}`)
-      .then((res) => setProduct(res.data))
+      .then((res) => {
+        setProduct(res.data);
+        addToRecentlyViewed(res.data); // ← save for recently viewed
+      })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, [id]);
@@ -90,17 +94,48 @@ export default function ProductPage() {
         ]}
       />
       <div style={{ padding: "28px 64px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48 }}>
-        {/* Product Image */}
+        {/* ---- Product Image with Zoom ---- */}
         <div>
-          <div style={{ background: "#EDE8E0", height: 440, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div
+            style={{
+              height: 440,
+              overflow: "hidden",
+              position: "relative",
+              background: "#EDE8E0",
+            }}
+            onMouseMove={(e) => {
+              const img = document.getElementById("product-main-image");
+              if (!img) return;
+              const bounds = e.currentTarget.getBoundingClientRect();
+              const x = ((e.clientX - bounds.left) / bounds.width) * 100;
+              const y = ((e.clientY - bounds.top) / bounds.height) * 100;
+              img.style.transformOrigin = `${x}% ${y}%`;
+            }}
+            onMouseEnter={() => {
+              const img = document.getElementById("product-main-image");
+              if (img) img.style.transform = "scale(2)";
+            }}
+            onMouseLeave={() => {
+              const img = document.getElementById("product-main-image");
+              if (img) img.style.transform = "scale(1)";
+            }}
+          >
             <img
               id="product-main-image"
               src={product.imageUrl || ""}
               alt={product.name}
-              style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "cover" }}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                transition: "transform 0.3s ease",
+                transform: "scale(1)",
+                cursor: "crosshair",
+              }}
               onError={(e) => {
                 e.target.style.display = "none";
-                e.target.nextSibling.style.display = "block";
+                const fallback = e.target.nextSibling;
+                if (fallback) fallback.style.display = "flex";
               }}
             />
             <svg
@@ -110,14 +145,22 @@ export default function ProductPage() {
               fill="none"
               stroke="rgba(0,0,0,0.08)"
               strokeWidth="1.5"
-              style={{ display: product.imageUrl ? "none" : "block" }}
+              style={{
+                display: product.imageUrl ? "none" : "flex",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                margin: "auto",
+              }}
             >
               <path d="M40 10 C24 10 16 24 16 36 L8 44 L0 44 L0 160 L80 160 L80 44 L72 44 L64 36 C64 24 56 10 40 10Z" />
             </svg>
           </div>
         </div>
 
-        {/* Product Info */}
+        {/* ---- Product Info ---- */}
         <div>
           <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
             {product.category}
