@@ -4,7 +4,7 @@ import api from "../api";
 import Breadcrumb from "../components/Breadcrumb";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
-import { addToRecentlyViewed } from "../components/RecentlyViewed";
+import { addToRecentlyViewed } from "../components/RecentlyViewed"; // ← import
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
 
@@ -24,7 +24,7 @@ export default function ProductPage() {
     api.get(`/products/${id}`)
       .then((res) => {
         setProduct(res.data);
-        addToRecentlyViewed(res.data); // ← save for recently viewed
+        addToRecentlyViewed(res.data);   // ← save to recently viewed
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
