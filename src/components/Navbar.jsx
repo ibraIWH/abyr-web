@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
+import ModernSearch from "./ModernSearch";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -25,10 +26,12 @@ export default function Navbar() {
   return (
     <div style={{ borderBottom: `0.5px solid ${C.border}`, background: C.sand }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 48px", height: 52 }}>
+        {/* Logo */}
         <Link to="/" style={{ ...Ser(28, 300, C.ink), textDecoration: "none" }}>
           abyr
         </Link>
-        <Link to="/search" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>Search</Link>
+
+        {/* Right side */}
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           {user ? (
             <>
@@ -46,9 +49,12 @@ export default function Navbar() {
             <Link to="/signin" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>
               SIGN IN
             </Link>
-          )
-        }
+          )}
 
+          {/* Modern Search component */}
+          <ModernSearch />
+
+          {/* Cart */}
           <Link to="/cart" style={{ position: "relative", ...F(10, 400, C.ink), textDecoration: "none" }}>
             CART
             {cartCount > 0 && (

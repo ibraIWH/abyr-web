@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import api from "../api";
+import AnnouncementBar from "../components/AnnouncementBar";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import ProductCard from "../components/ProductCard";
+import TestimonialsSection from "../components/TestimonialsSection";
 import { C, F, Ser } from "../designTokens";
 
 export default function HomePage() {
@@ -25,6 +27,7 @@ export default function HomePage() {
         flexDirection: "column",
       }}
     >
+      <AnnouncementBar />
       <Navbar />
 
       {/* Hero */}
@@ -99,6 +102,7 @@ export default function HomePage() {
           </div>
         )}
       </div>
+      <TestimonialsSection />
 
       <Footer />
     </div>

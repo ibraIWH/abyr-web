@@ -17,7 +17,10 @@ export default function CategoryPage() {
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, [slug]);
-
+<Breadcrumb items={[
+  { label: "Home", to: "/" },
+  { label: slug },
+]} />
   return (
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
