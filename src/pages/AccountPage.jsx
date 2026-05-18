@@ -138,10 +138,10 @@ export default function AccountPage() {
               </div>
             </div>
           )}
-          {activeSection === "orders" && <OrdersPage />}
-          {activeSection === "favourites" && <FavouritesPage />}
-          {activeSection === "addresses" && <AddressesPage />}
-          {activeSection === "settings" && <SettingsPage />}
+          {activeSection === "orders" && <OrdersPage standalone={false} />}
+          {activeSection === "favourites" && <FavouritesPage standalone={false} />}
+          {activeSection === "addresses" && <AddressesPage standalone={false} />}
+          {activeSection === "settings" && <SettingsPage standalone={false} />}
         </div>
       </div>
       <Footer />

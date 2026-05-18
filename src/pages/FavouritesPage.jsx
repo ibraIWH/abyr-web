@@ -6,7 +6,7 @@ import ProductCard from "../components/ProductCard";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
 
-export default function FavouritesPage() {
+export default function FavouritesPage({ standalone = true }) {
   const { user } = useAuth();
   const [favourites, setFavourites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,25 +27,31 @@ export default function FavouritesPage() {
     );
   }
 
+  const content = (
+    <div style={{ padding: standalone ? "28px 64px" : "0" }}>
+      <h1 style={{ ...Ser(32, 300, C.ink), marginBottom: 28 }}>My Favourites</h1>
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>Loading...</div>
+      ) : favourites.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>
+          No favourites yet. Tap the heart on any product to add it here.
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
+          {favourites.map(fav => (
+            <ProductCard key={fav._id} product={fav.product} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  if (!standalone) return content;
+
   return (
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
-      <div style={{ padding: "28px 64px" }}>
-        <h1 style={{ ...Ser(32, 300, C.ink), marginBottom: 28 }}>My Favourites</h1>
-        {loading ? (
-          <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>Loading...</div>
-        ) : favourites.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>
-            No favourites yet. Tap the heart on any product to add it here.
-          </div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
-            {favourites.map(fav => (
-              <ProductCard key={fav._id} product={fav.product} />
-            ))}
-          </div>
-        )}
-      </div>
+      {content}
       <Footer />
     </div>
   );

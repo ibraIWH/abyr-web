@@ -1,21 +1,19 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import Footer from "../components/Footer";
+import Navbar from "../components/Navbar";
+import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
 
-export default function SettingsPage() {
-  const navigate = useNavigate();
+export default function SettingsPage({ standalone = true }) {
+  const { logout } = useAuth();
   const [showConfirm, setShowConfirm] = useState(false);
 
   const handleSignOut = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("cart");
-    window.dispatchEvent(new Event("cartUpdated"));
-    navigate("/");
+    logout();
   };
 
-  return (
-    <div>
+  const content = (
+    <div style={{ padding: standalone ? "28px 64px" : "0" }}>
       <div style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Settings</div>
       <div style={{ marginBottom: 28 }}>
         <div style={{ ...F(11, 400, "#888"), marginBottom: 8 }}>Account security</div>
@@ -51,6 +49,16 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+
+  if (!standalone) return content;
+
+  return (
+    <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <Navbar />
+      {content}
+      <Footer />
     </div>
   );
 }
