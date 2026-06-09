@@ -55,10 +55,11 @@ export default function ProductCard({ product }) {
           to={`/product/${product._id}`}
           style={{ textDecoration: "none", color: C.ink }}
         >
+          {/* Image – click navigates to product page */}
           <div
             style={{
-              background: "#EDE8E0",
-              height: 200,
+              background: "transparent",
+              height: 410,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -69,7 +70,11 @@ export default function ProductCard({ product }) {
               <img
                 src={product.imageUrl}
                 alt={product.name}
-                style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "cover" }}
+                style={{
+                  maxHeight: "100%",
+                  maxWidth: "100%",
+                  objectFit: "cover",
+                }}
               />
             ) : (
               <svg
@@ -89,6 +94,7 @@ export default function ProductCard({ product }) {
               <button
                 onClick={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   setShowQuickView(true);
                 }}
                 style={{
@@ -105,6 +111,7 @@ export default function ProductCard({ product }) {
                   textTransform: "uppercase",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
+                  zIndex: 2,
                 }}
               >
                 Quick View
@@ -124,6 +131,7 @@ export default function ProductCard({ product }) {
                   ...F(8, 500, C.cream),
                   letterSpacing: 1,
                   textTransform: "uppercase",
+                  zIndex: 2,
                 }}
               >
                 {badge}
@@ -148,6 +156,7 @@ export default function ProductCard({ product }) {
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
+                  zIndex: 2,
                 }}
               >
                 <svg
@@ -164,6 +173,7 @@ export default function ProductCard({ product }) {
             )}
           </div>
 
+          {/* Product info */}
           <div style={{ padding: "8px 10px 12px" }}>
             <div
               style={{

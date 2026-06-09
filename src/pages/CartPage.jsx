@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
-import { C, F, Ser } from "../designTokens";
+import { C, Cap, F, Ser } from "../designTokens";
 
 export default function CartPage() {
   const [cart, setCart] = useState(JSON.parse(sessionStorage.getItem("cart") || "[]"));
@@ -45,6 +45,7 @@ export default function CartPage() {
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
       <div style={{ padding: "28px 64px", display: "grid", gridTemplateColumns: "1fr 340px", gap: 48, alignItems: "start" }}>
+        {/* Cart Items */}
         <div>
           <h1 style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Shopping Bag ({cart.length})</h1>
           {cart.map((item, index) => (
@@ -79,6 +80,7 @@ export default function CartPage() {
           ))}
         </div>
 
+        {/* Order Summary */}
         <div style={{ background: C.cream, padding: "24px" }}>
           <div style={{ ...Cap(C.tan), marginBottom: 18 }}>Order Summary</div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
@@ -103,7 +105,3 @@ export default function CartPage() {
     </div>
   );
 }
-
-const Cap = (c = C.tan) => ({
-  fontFamily: "'DM Sans', sans-serif", fontSize: 9, color: c, letterSpacing: 2, textTransform: "uppercase"
-});

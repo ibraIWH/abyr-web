@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import AnnouncementBar from "../components/AnnouncementBar";
+import CategoryNav from "../components/CategoryNav";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import NewsletterSection from "../components/NewsletterSection";
 import ProductCard from "../components/ProductCard";
+import RecentlyViewed from "../components/RecentlyViewed";
 import TestimonialsSection from "../components/TestimonialsSection";
 import { C, F, Ser } from "../designTokens";
 
@@ -73,6 +76,8 @@ export default function HomePage() {
         </div>
       </div>
 
+      <CategoryNav />
+
       {/* Products grid */}
       <div style={{ padding: "40px 64px" }}>
         <h2 style={{ ...Ser(32, 300, C.ink), marginBottom: 28 }}>
@@ -102,6 +107,9 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {/* Additional sections */}
+      <RecentlyViewed />
       <TestimonialsSection />
       <NewsletterSection />
 

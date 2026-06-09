@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import api from "../api";
+import CategoryNav from "../components/CategoryNav";
 import FilterSidebar from "../components/FilterSidebar";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
@@ -29,13 +30,14 @@ export default function CategoryPage() {
     let sorted = [...filteredProducts];
     if (order === "price-low") sorted.sort((a, b) => a.price - b.price);
     else if (order === "price-high") sorted.sort((a, b) => b.price - a.price);
-    else sorted = [...filteredProducts]; // reset to current filter
+    else sorted = [...filteredProducts];
     setFilteredProducts(sorted);
   };
 
   return (
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
+      <CategoryNav />   {/* ← category links directly below the main navbar */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <FilterSidebar
           products={products}

@@ -29,7 +29,7 @@ export default function RecentlyViewed() {
             to={`/product/${prod._id}`}
             style={{ textDecoration: "none", color: C.ink }}
           >
-            <div style={{ background: "#EDE8E0", height: 180, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+            <div style={{ background: "transparent", height: 410, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
               {prod.imageUrl ? (
                 <img src={prod.imageUrl} alt={prod.name} style={{ maxHeight: "100%", maxWidth: "100%" }} />
               ) : (

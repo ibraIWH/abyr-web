@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
+import MegaMenu from "./MegaMenu";
 import ModernSearch from "./ModernSearch";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [cartCount, setCartCount] = useState(0);
+  const [showMegaMenu, setShowMegaMenu] = useState(false);
 
   const updateCartCount = () => {
     const cart = JSON.parse(sessionStorage.getItem("cart") || "[]");
@@ -24,7 +26,7 @@ export default function Navbar() {
   };
 
   return (
-    <div style={{ borderBottom: `0.5px solid ${C.border}`, background: C.sand }}>
+    <div style={{ borderBottom: `0.5px solid ${C.border}`, background: C.sand, position: "relative", zIndex: 1000 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 48px", height: 52 }}>
         {/* Logo */}
         <Link to="/" style={{ ...Ser(28, 300, C.ink), textDecoration: "none" }}>
@@ -33,6 +35,20 @@ export default function Navbar() {
 
         {/* Right side */}
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+          {/* Shop button – triggers mega menu */}
+          <div
+            onClick={() => setShowMegaMenu(!showMegaMenu)}
+            style={{
+              ...F(10, 400, C.ink),
+              cursor: "pointer",
+              letterSpacing: 1,
+              textDecoration: "none",
+              padding: "4px 0",
+            }}
+          >
+            SHOP
+          </div>
+
           {user ? (
             <>
               <Link to="/account" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>
@@ -51,7 +67,6 @@ export default function Navbar() {
             </Link>
           )}
 
-          {/* Modern Search component */}
           <ModernSearch />
 
           {/* Cart */}
@@ -65,6 +80,12 @@ export default function Navbar() {
           </Link>
         </div>
       </div>
+
+      {/* Mega Menu rendered here, below the navbar strip */}
+      <MegaMenu
+        open={showMegaMenu}
+        onClose={() => setShowMegaMenu(false)}
+      />
     </div>
   );
 }
