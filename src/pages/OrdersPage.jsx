@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import EmptyState from '../components/EmptyState';
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
@@ -16,6 +17,10 @@ export default function OrdersPage({ standalone = true }) {
     if (lastOrder) setOrders([lastOrder]);
     setLoading(false);
   }, []);
+
+  if (!loading && orders.length === 0) {
+    return <EmptyState title="No orders yet" message="When you place an order, it will appear here." icon="📦" showShopButton={true} />;
+  }
 
   if (!user) {
     return (

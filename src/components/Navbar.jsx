@@ -13,9 +13,7 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -46,7 +44,6 @@ const Navbar = () => {
     textDecoration: 'none',
     fontFamily: designTokens.fonts.body,
     fontSize: '0.9rem',
-    transition: 'opacity 0.2s',
     background: 'none',
     border: 'none',
     cursor: 'pointer',
@@ -64,7 +61,6 @@ const Navbar = () => {
     <div style={navbarStyles}>
       <div style={containerStyle}>
         <Link to="/" style={logoStyle}>Abyr Line</Link>
-        
         <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
           <MegaMenu textColor={isScrolled ? designTokens.colors.ink : 'white'} />
           <ModernSearch />

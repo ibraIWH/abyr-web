@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import EmptyState from '../components/EmptyState';
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import { C, Cap, F, Ser } from "../designTokens";
@@ -24,6 +25,10 @@ export default function CartPage() {
   };
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  if (!loading && cart.length === 0) {
+    return <EmptyState title="Your cart is empty" message="Looks like you haven't added anything yet." icon="🛒" showShopButton={true} />;
+  }
 
   if (cart.length === 0) {
     return (

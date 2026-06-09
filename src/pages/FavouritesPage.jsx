@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import api from "../api";
+import EmptyState from '../components/EmptyState';
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 import ProductCard from "../components/ProductCard";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
+
 
 export default function FavouritesPage({ standalone = true }) {
   const { user } = useAuth();
@@ -26,7 +28,9 @@ export default function FavouritesPage({ standalone = true }) {
       </div>
     );
   }
-
+  if (!loading && favourites.length === 0) {
+    return <EmptyState title="No favourites yet" message="Save items you love and they'll appear here." icon="❤️" showShopButton={true} />;
+  }
   const content = (
     <div style={{ padding: standalone ? "28px 64px" : "0" }}>
       <h1 style={{ ...Ser(32, 300, C.ink), marginBottom: 28 }}>My Favourites</h1>
