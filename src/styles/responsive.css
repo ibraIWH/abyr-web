@@ -1,0 +1,60 @@
+/* Base mobile-first */
+@media (max-width: 768px) {
+    .hide-on-mobile {
+      display: none !important;
+    }
+    
+    .stack-on-mobile {
+      flex-direction: column !important;
+    }
+    
+    .grid-1-mobile {
+      grid-template-columns: 1fr !important;
+    }
+    
+    .navbar-container {
+      padding: 0.75rem 1rem !important;
+    }
+    
+    .product-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 1rem !important;
+    }
+    
+    .footer-links {
+      flex-direction: column;
+      text-align: center;
+    }
+  }
+  
+  /* Tablet and up */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .product-grid {
+      grid-template-columns: repeat(3, 1fr) !important;
+    }
+  }
+  
+  /* Desktop */
+  @media (min-width: 1025px) {
+    .product-grid {
+      grid-template-columns: repeat(4, 1fr) !important;
+    }
+  }
+  
+  /* Animations */
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+  }
