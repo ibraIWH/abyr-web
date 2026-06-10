@@ -1,6 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
 const steps = [
@@ -15,8 +15,8 @@ export default function TrackingPage() {
   const orderNumber = searchParams.get("order") || "ABR-00000000";
 
   return (
+    <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar />
       <div style={{ flex: 1, padding: "32px 64px" }}>
         <div onClick={() => window.history.back()} style={{ ...F(10, 400, "#888"), cursor: "pointer", marginBottom: 18 }}>← Back to My Orders</div>
         <div style={{ ...Ser(28, 300, C.ink), marginBottom: 4 }}>Order {orderNumber}</div>
@@ -61,6 +61,7 @@ export default function TrackingPage() {
       </div>
       <Footer />
     </div>
+    </Layout>
   );
 }
 

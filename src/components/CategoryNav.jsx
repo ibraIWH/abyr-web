@@ -17,7 +17,7 @@ export default function CategoryNav() {
         background: C.white,
         borderBottom: `0.5px solid ${C.border}`,
         position: "sticky",
-        top: 32,           // height of the main navbar
+        top: 80,           // height of the main navbar
         zIndex: 900,
         display: "flex",
         alignItems: "center",

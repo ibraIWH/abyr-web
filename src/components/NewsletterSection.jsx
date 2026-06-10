@@ -8,7 +8,6 @@ export default function NewsletterSection() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (email.trim()) setSubmitted(true);
-    // Later: connect to SendGrid / Mailchimp
   };
 
   if (submitted) {

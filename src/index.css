@@ -1,4 +1,9 @@
-/* Add at the bottom of src/index.css */
+/* Global Reset – removes default browser margins */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 @keyframes slideIn {
   from {

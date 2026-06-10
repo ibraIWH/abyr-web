@@ -1,83 +1,95 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useCart } from '../context/CartContext';
-import { designTokens } from '../styles/designTokens';
-import MegaMenu from './MegaMenu';
-import ModernSearch from './ModernSearch';
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
+import { C, F, Ser } from "../designTokens";
+import MegaMenu from "./MegaMenu";
+import ModernSearch from "./ModernSearch";
 
-const Navbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
+export default function Navbar() {
+  const [scrolled, setScrolled] = useState(false);
+  const [megaOpen, setMegaOpen] = useState(false);   // ← new state
   const { user, logout } = useAuth();
   const { cartCount } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 50);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const navbarStyles = {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100%',
-    zIndex: 1000,
-    transition: 'all 0.3s ease',
-    background: isScrolled ? designTokens.colors.sand : 'transparent',
-    color: isScrolled ? designTokens.colors.ink : 'white',
-    boxShadow: isScrolled ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
-  };
-
-  const containerStyle = {
-    padding: '1rem 2rem',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    maxWidth: '1400px',
-    margin: '0 auto',
-  };
-
-  const linkStyle = {
-    color: 'inherit',
-    textDecoration: 'none',
-    fontFamily: designTokens.fonts.body,
-    fontSize: '0.9rem',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-  };
-
-  const logoStyle = {
-    fontFamily: designTokens.fonts.heading,
-    fontSize: '1.8rem',
-    margin: 0,
-    color: 'inherit',
-    textDecoration: 'none',
+  const handleSignOut = () => {
+    logout();
   };
 
   return (
-    <div style={navbarStyles}>
-      <div style={containerStyle}>
-        <Link to="/" style={logoStyle}>Abyr Line</Link>
-        <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-          <MegaMenu textColor={isScrolled ? designTokens.colors.ink : 'white'} />
+    <div
+      style={{
+        position: "sticky",
+        top: "28px",
+        left: 0,
+        width: "100%",
+        zIndex: 1000,
+        transition: "all 0.3s ease",
+        background: scrolled ? C.sand : "transparent",
+        boxShadow: scrolled ? "0 4px 12px rgba(0,0,0,0.05)" : "none",
+      }}
+    >
+      <div
+        style={{
+          padding: "0 48px",
+          height: 52,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          maxWidth: 1400,
+          margin: "0 auto",
+        }}
+      >
+        <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+          <Link to="/" style={{ ...Ser(28, 300, C.ink), textDecoration: "none" }}>
+            abyr
+          </Link>
+          {/* SHOP button that toggles the mega menu */}
+          <div
+            onClick={() => setMegaOpen(!megaOpen)}
+            style={{
+              ...F(10, 400, C.ink),
+              cursor: "pointer",
+              letterSpacing: 1,
+            }}
+          >
+            SHOP
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           <ModernSearch />
-          <Link to="/favourites" style={linkStyle}>❤️</Link>
-          <Link to="/cart" style={linkStyle}>🛒 {cartCount > 0 && <span>({cartCount})</span>}</Link>
+          <Link to="/favourites" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>FAV</Link>
+          <Link to="/cart" style={{ position: "relative", ...F(10, 400, C.ink), textDecoration: "none" }}>
+            CART
+            {cartCount > 0 && (
+              <span style={{ fontSize: 9, background: C.brandRed, color: C.cream, borderRadius: "50%", padding: "1px 5px", marginLeft: 4 }}>
+                {cartCount}
+              </span>
+            )}
+          </Link>
           {user ? (
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button onClick={() => navigate('/account')} style={linkStyle}>{user.name}</button>
-              <button onClick={logout} style={linkStyle}>Logout</button>
-            </div>
+            <>
+              <Link to="/account" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>{user.name.toUpperCase()}</Link>
+              <span onClick={handleSignOut} style={{ ...F(10, 400, C.red), cursor: "pointer", textDecoration: "underline" }}>
+                SIGN OUT
+              </span>
+            </>
           ) : (
-            <Link to="/signin" style={linkStyle}>Sign In</Link>
+            <Link to="/signin" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>SIGN IN</Link>
           )}
         </div>
       </div>
+
+      {/* MegaMenu with proper props */}
+      <MegaMenu open={megaOpen} onClose={() => setMegaOpen(false)} />
     </div>
   );
-};
-
-export default Navbar;
+}

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api";
 import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Layout from "../components/Layout";
 import ProductCard from "../components/ProductCard";
 import { C, F, Ser } from "../designTokens";
 
@@ -40,8 +40,8 @@ export default function SearchPage() {
   };
 
   return (
+    <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar />
       <div style={{ padding: "28px 64px" }}>
         {/* Search Input */}
         <form onSubmit={handleSubmit} style={{ display: "flex", marginBottom: 24 }}>
@@ -102,5 +102,6 @@ export default function SearchPage() {
       </div>
       <Footer />
     </div>
+    </Layout>
   );
 }

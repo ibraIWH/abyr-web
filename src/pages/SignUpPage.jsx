@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
 
@@ -30,8 +30,8 @@ export default function SignUpPage() {
   };
 
   return (
+    <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar />
       <div style={{ flex: 1, display: "flex" }}>
         <div style={{ flex: 1, background: `linear-gradient(135deg, ${C.brandRed}, ${C.brandRed})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ textAlign: "center" }}>
@@ -76,5 +76,6 @@ export default function SignUpPage() {
       </div>
       <Footer />
     </div>
+    </Layout>
   );
 }

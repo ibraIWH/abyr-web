@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api";
 import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
 export default function EmailVerifyPage() {
@@ -46,8 +46,8 @@ export default function EmailVerifyPage() {
   };
 
   return (
+    <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar />
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
         <div style={{ maxWidth: 480, textAlign: "center" }}>
           <div style={{ width: 80, height: 80, border: `1px solid ${C.gold}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 28px" }}>
@@ -91,5 +91,6 @@ export default function EmailVerifyPage() {
       </div>
       <Footer />
     </div>
+    </Layout>
   );
 }

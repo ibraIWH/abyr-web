@@ -77,7 +77,7 @@ export default function ModernSearch() {
         <div
           style={{
             position: "fixed",
-            top: 52,           // start below the navbar (Navbar height)
+            top: 80,           // start below the navbar (Navbar height)
             left: 0,
             right: 0,
             bottom: 0,

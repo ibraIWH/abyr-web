@@ -40,8 +40,8 @@ export default function Footer() {
             ))}
           </div>
           <div style={{ ...F(9, 500, C.gold), letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>Secured By</div>
-          <div style={{ ...F(9, 400, "rgba(255,255,255,0.3)"), marginBottom: 6 }}>🔒 SSL Secure Checkout</div>
-          <div style={{ ...F(9, 400, "rgba(255,255,255,0.3)") }}>📦 Tracked Delivery</div>
+          <div style={{ ...F(9, 400, "rgba(255,255,255,0.3)"), marginBottom: 6 }}>SSL Secure Checkout</div>
+          <div style={{ ...F(9, 400, "rgba(255,255,255,0.3)") }}>Tracked Delivery</div>
         </div>
       </div>
       <div style={{ borderTop: "0.5px solid rgba(255,255,255,0.08)", paddingTop: 20, textAlign: "center", ...F(9, 400, "rgba(255,255,255,0.2)") }}>

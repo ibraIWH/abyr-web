@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
 import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
 export default function NotFoundPage() {
   return (
+    <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar />
+   
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40 }}>
         <h1 style={{ ...Ser(72, 300, C.ink), marginBottom: 16 }}>404</h1>
         <p style={{ ...F(16, 400, "#888"), marginBottom: 32 }}>Page not found</p>
@@ -27,5 +28,6 @@ export default function NotFoundPage() {
       </div>
       <Footer />
     </div>
+    </Layout>
   );
 }

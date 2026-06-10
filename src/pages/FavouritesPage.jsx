@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../api";
 import EmptyState from '../components/EmptyState';
 import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Layout from "../components/Layout";
 import ProductCard from "../components/ProductCard";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
@@ -53,10 +53,11 @@ export default function FavouritesPage({ standalone = true }) {
   if (!standalone) return content;
 
   return (
+    <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar />
       {content}
       <Footer />
     </div>
+    </Layout>
   );
 }

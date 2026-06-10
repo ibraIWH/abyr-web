@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
 export default function PaymentPage() {
@@ -25,8 +25,8 @@ export default function PaymentPage() {
   };
 
   return (
+    <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar />
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
         <div style={{ maxWidth: 500, width: "100%", background: C.white, border: `0.5px solid ${C.border}`, padding: "36px" }}>
           <div style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Payment</div>
@@ -113,6 +113,7 @@ export default function PaymentPage() {
       </div>
       <Footer />
     </div>
+    </Layout>
   );
 }
 

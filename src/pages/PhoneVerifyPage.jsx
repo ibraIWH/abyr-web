@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
 
@@ -17,8 +17,8 @@ export default function PhoneVerifyPage() {
 
   if (!user) {
     return (
+      <Layout>
       <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <Navbar />
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ ...Ser(28, 300, C.ink), marginBottom: 12 }}>Please log in first</div>
@@ -29,6 +29,7 @@ export default function PhoneVerifyPage() {
         </div>
         <Footer />
       </div>
+      </Layout>
     );
   }
 
@@ -68,8 +69,9 @@ export default function PhoneVerifyPage() {
   };
 
   return (
+    <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar />
+    
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
         <div style={{ maxWidth: 420, width: "100%", background: C.white, padding: "36px", border: `0.5px solid ${C.border}` }}>
           <div style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Phone Verification</div>
@@ -122,5 +124,6 @@ export default function PhoneVerifyPage() {
       </div>
       <Footer />
     </div>
+    </Layout>
   );
 }

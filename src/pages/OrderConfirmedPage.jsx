@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
 import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
 export default function OrderConfirmedPage() {
@@ -8,8 +8,8 @@ export default function OrderConfirmedPage() {
   const orderNumber = searchParams.get("order") || "ABR-00000000";
 
   return (
+    <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40, textAlign: "center" }}>
         <div style={{ width: 80, height: 80, border: "1px solid #5A8F5A", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 28 }}>
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#5A8F5A" strokeWidth="1.5">
@@ -36,5 +36,6 @@ export default function OrderConfirmedPage() {
       </div>
       <Footer />
     </div>
+    </Layout>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
 
@@ -55,10 +55,11 @@ export default function SettingsPage({ standalone = true }) {
   if (!standalone) return content;
 
   return (
+    <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar />
       {content}
       <Footer />
     </div>
+    </Layout>
   );
 }

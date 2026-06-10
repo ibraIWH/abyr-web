@@ -4,7 +4,7 @@ import api from "../api";
 import CategoryNav from "../components/CategoryNav";
 import FilterSidebar from "../components/FilterSidebar";
 import Footer from "../components/Footer";
-import Navbar from "../components/Navbar";
+import Layout from "../components/Layout";
 import ProductCard from "../components/ProductCard";
 import { C, F, Ser } from "../designTokens";
 
@@ -35,55 +35,58 @@ export default function CategoryPage() {
   };
 
   return (
-    <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar />
-      <CategoryNav />   {/* ← category links directly below the main navbar */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <FilterSidebar
-          products={products}
-          onFilter={(filtered) => setFilteredProducts(filtered)}
-        />
-        <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <div>
-              <h1 style={{ ...Ser(28, 300, C.ink), textTransform: "capitalize", marginBottom: 4 }}>
-                {slug}
-              </h1>
-              <div style={{ ...F(11, 400, "#888") }}>{filteredProducts.length} items</div>
-            </div>
-            <select
-              value={sortBy}
-              onChange={(e) => handleSort(e.target.value)}
-              style={{
-                border: `0.5px solid ${C.border}`,
-                padding: "6px 12px",
-                ...F(10, 400, C.ink),
-                outline: "none",
-                background: C.white,
-              }}
-            >
-              <option value="relevance">Sort by: Relevance</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="price-high">Price: High to Low</option>
-            </select>
-          </div>
+    <Layout>
+      <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        {/* CategoryNav – no longer sticky, scrolls with the page */}
+        <CategoryNav />
 
-          {loading ? (
-            <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>Loading...</div>
-          ) : filteredProducts.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>
-              No products found with these filters.
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          <FilterSidebar
+            products={products}
+            onFilter={(filtered) => setFilteredProducts(filtered)}
+          />
+          <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div>
+                <h1 style={{ ...Ser(28, 300, C.ink), textTransform: "capitalize", marginBottom: 4 }}>
+                  {slug}
+                </h1>
+                <div style={{ ...F(11, 400, "#888") }}>{filteredProducts.length} items</div>
+              </div>
+              <select
+                value={sortBy}
+                onChange={(e) => handleSort(e.target.value)}
+                style={{
+                  border: `0.5px solid ${C.border}`,
+                  padding: "6px 12px",
+                  ...F(10, 400, C.ink),
+                  outline: "none",
+                  background: C.white,
+                }}
+              >
+                <option value="relevance">Sort by: Relevance</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+              </select>
             </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))", gap: 16 }}>
-              {filteredProducts.map((product) => (
-                <ProductCard key={product._id} product={product} />
-              ))}
-            </div>
-          )}
+
+            {loading ? (
+              <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>Loading...</div>
+            ) : filteredProducts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>
+                No products found with these filters.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))", gap: 16 }}>
+                {filteredProducts.map((product) => (
+                  <ProductCard key={product._id} product={product} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+        <Footer />
       </div>
-      <Footer />
-    </div>
+    </Layout>
   );
 }
