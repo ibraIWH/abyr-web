@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
@@ -28,7 +27,7 @@ export default function AccountPage() {
               Sign In
             </Link>
           </div>
-          <Footer />
+          
         </div>
       </Layout>
     );
@@ -145,7 +144,7 @@ export default function AccountPage() {
             {activeSection === "settings" && <SettingsPage standalone={false} />}
           </div>
         </div>
-        <Footer />
+
       </div>
     </Layout>
   );

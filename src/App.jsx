@@ -15,13 +15,13 @@ import SignUpPage from './pages/SignUpPage';
 import SizeGuidePage from './pages/SizeGuidePage';
 import TrackingPage from './pages/TrackingPage';
 
-// Guest Checkout (no login required)
+// Guest can still view cart
 import CartPage from './pages/CartPage';
-import CheckoutPage from './pages/CheckoutPage';
 
-// Protected Pages
+// Protected Pages (must be logged in)
 import AccountPage from './pages/AccountPage';
 import AddressesPage from './pages/AddressesPage';
+import CheckoutPage from './pages/CheckoutPage'; // now protected
 import FavouritesPage from './pages/FavouritesPage';
 import OrdersPage from './pages/OrdersPage';
 import PaymentPage from './pages/PaymentPage';
@@ -44,11 +44,11 @@ function App() {
       <Route path="/tracking" element={<TrackingPage />} />
       <Route path="/size-guide" element={<SizeGuidePage />} />
 
-      {/* Guest checkout */}
+      {/* Cart is still publicly viewable */}
       <Route path="/cart" element={<CartPage />} />
-      <Route path="/checkout" element={<CheckoutPage />} />
 
-      {/* Protected */}
+      {/* Protected routes */}
+      <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
       <Route path="/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
       <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />

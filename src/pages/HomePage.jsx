@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import CategoryNav from "../components/CategoryNav";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout"; // ← THIS WAS MISSING
 import NewsletterSection from "../components/NewsletterSection";
 import ProductCard from "../components/ProductCard";
@@ -110,7 +109,7 @@ export default function HomePage() {
         <TestimonialsSection />
         <NewsletterSection />
 
-        <Footer />
+        
       </div>
     </Layout>
   );

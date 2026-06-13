@@ -1,5 +1,4 @@
 import { useState } from "react";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
@@ -58,7 +57,7 @@ export default function SettingsPage({ standalone = true }) {
     <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {content}
-      <Footer />
+    
     </div>
     </Layout>
   );

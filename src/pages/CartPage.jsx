@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import EmptyState from "../components/EmptyState";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useCart } from "../context/CartContext";
 import { C, Cap, F, Ser } from "../designTokens";
@@ -15,7 +14,7 @@ export default function CartPage() {
       <Layout>
         <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
           <EmptyState title="Your cart is empty" message="Looks like you haven't added anything yet." showShopButton={true} />
-          <Footer />
+           
         </div>
       </Layout>
     );
@@ -80,7 +79,7 @@ export default function CartPage() {
             </Link>
           </div>
         </div>
-        <Footer />
+       
       </div>
     </Layout>
   );

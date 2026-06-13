@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -111,7 +110,7 @@ export default function PaymentPage() {
           </button>
         </div>
       </div>
-      <Footer />
+     
     </div>
     </Layout>
   );

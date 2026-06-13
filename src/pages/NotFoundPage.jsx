@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -26,7 +25,7 @@ export default function NotFoundPage() {
           Back to Home
         </Link>
       </div>
-      <Footer />
+      
     </div>
     </Layout>
   );

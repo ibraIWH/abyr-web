@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
@@ -27,7 +26,7 @@ export default function PhoneVerifyPage() {
             </div>
           </div>
         </div>
-        <Footer />
+        
       </div>
       </Layout>
     );
@@ -122,7 +121,7 @@ export default function PhoneVerifyPage() {
           )}
         </div>
       </div>
-      <Footer />
+    
     </div>
     </Layout>
   );

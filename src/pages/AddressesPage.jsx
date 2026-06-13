@@ -1,5 +1,4 @@
 import { useState } from "react";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -41,7 +40,7 @@ export default function AddressesPage({ standalone = true }) {
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
      
       {content}
-      <Footer />
+      
     </div>
     </Layout>
   );

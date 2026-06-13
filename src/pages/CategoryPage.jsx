@@ -3,7 +3,6 @@ import { useParams } from "react-router-dom";
 import api from "../api";
 import CategoryNav from "../components/CategoryNav";
 import FilterSidebar from "../components/FilterSidebar";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import ProductCard from "../components/ProductCard";
 import { C, F, Ser } from "../designTokens";
@@ -85,7 +84,7 @@ export default function CategoryPage() {
             )}
           </div>
         </div>
-        <Footer />
+        
       </div>
     </Layout>
   );

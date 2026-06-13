@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -89,7 +88,7 @@ export default function EmailVerifyPage() {
           )}
         </div>
       </div>
-      <Footer />
+   
     </div>
     </Layout>
   );

@@ -51,6 +51,9 @@ export default function Navbar() {
           <Link to="/" style={{ ...Ser(28, 300, C.ink), textDecoration: "none" }}>
             abyr
           </Link>
+        </div>
+
+        <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           {/* SHOP button that toggles the mega menu */}
           <div
             onClick={() => setMegaOpen(!megaOpen)}
@@ -62,9 +65,6 @@ export default function Navbar() {
           >
             SHOP
           </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
           <ModernSearch />
           <Link to="/favourites" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>FAV</Link>
           <Link to="/cart" style={{ position: "relative", ...F(10, 400, C.ink), textDecoration: "none" }}>
@@ -78,9 +78,7 @@ export default function Navbar() {
           {user ? (
             <>
               <Link to="/account" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>{user.name.toUpperCase()}</Link>
-              <span onClick={handleSignOut} style={{ ...F(10, 400, C.red), cursor: "pointer", textDecoration: "underline" }}>
-                SIGN OUT
-              </span>
+               
             </>
           ) : (
             <Link to="/signin" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>SIGN IN</Link>

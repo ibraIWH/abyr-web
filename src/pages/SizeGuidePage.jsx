@@ -1,4 +1,3 @@
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -57,7 +56,7 @@ export default function SizeGuidePage() {
           ))}
         </div>
       </div>
-      <Footer />
+     
     </div>
     </Layout>
   );

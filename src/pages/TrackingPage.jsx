@@ -1,5 +1,4 @@
 import { useSearchParams } from "react-router-dom";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -59,7 +58,7 @@ export default function TrackingPage() {
           </div>
         </div>
       </div>
-      <Footer />
+   
     </div>
     </Layout>
   );

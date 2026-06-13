@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api from "../api";
 import Breadcrumb from "../components/Breadcrumb";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { addToRecentlyViewed } from "../components/RecentlyViewed";
 import { useAuth } from "../context/AuthContext";
@@ -502,7 +501,7 @@ export default function ProductPage() {
           </div>
         )}
 
-        <Footer />
+       
       </div>
     </Layout>
   );

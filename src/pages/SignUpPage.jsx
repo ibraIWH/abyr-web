@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
@@ -74,7 +73,7 @@ export default function SignUpPage() {
           </div>
         </div>
       </div>
-      <Footer />
+     
     </div>
     </Layout>
   );

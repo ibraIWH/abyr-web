@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
@@ -68,7 +67,7 @@ export default function SignInPage() {
           </div>
         </div>
       </div>
-      <Footer />
+   
     </div>
     </Layout>
   );

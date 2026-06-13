@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import EmptyState from '../components/EmptyState';
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import ProductCard from "../components/ProductCard";
 import { useAuth } from "../context/AuthContext";
@@ -56,7 +55,7 @@ export default function FavouritesPage({ standalone = true }) {
     <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {content}
-      <Footer />
+     
     </div>
     </Layout>
   );
