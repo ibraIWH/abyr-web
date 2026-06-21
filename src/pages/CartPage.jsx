@@ -14,7 +14,6 @@ export default function CartPage() {
       <Layout>
         <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
           <EmptyState title="Your cart is empty" message="Looks like you haven't added anything yet." showShopButton={true} />
-           
         </div>
       </Layout>
     );
@@ -23,12 +22,11 @@ export default function CartPage() {
   return (
     <Layout>
       <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        {/* flex: 1 makes this area expand, pushing the footer down */}
         <div style={{ flex: 1, padding: "28px 64px", display: "grid", gridTemplateColumns: "1fr 340px", gap: 48, alignItems: "start" }}>
           <div>
             <h1 style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Shopping Bag ({cart.length})</h1>
             {cart.map((item) => (
-              <div key={item.id} style={{ display: "flex", gap: 18, paddingBottom: 20, marginBottom: 20, borderBottom: `0.5px solid ${C.border}` }}>
+              <div key={item._id} style={{ display: "flex", gap: 18, paddingBottom: 20, marginBottom: 20, borderBottom: `0.5px solid ${C.border}` }}>
                 <div style={{ width: 90, height: 110, background: "#EDE8E0", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.name} style={{ maxHeight: "100%", maxWidth: "100%" }} />
@@ -41,17 +39,17 @@ export default function CartPage() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <div style={{ ...F(12, 500, C.ink) }}>{item.name}</div>
-                    <span onClick={() => removeFromCart(item.id)} style={{ cursor: "pointer", fontSize: 16, color: "#CCC" }}>×</span>
+                    <span onClick={() => removeFromCart(item._id)} style={{ cursor: "pointer", fontSize: 16, color: "#CCC" }}>×</span>
                   </div>
                   <div style={{ ...F(10, 400, "#888"), marginBottom: 12 }}>
-                    Qty: {item.quantity}
+                    Size {item.size} · Qty: {item.quantity}
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ ...Ser(16, 300, C.tan) }}>SAR {parseFloat(item.price).toFixed(2)}</div>
                     <div style={{ display: "flex", border: `0.5px solid ${C.border}` }}>
-                      <div onClick={() => updateQuantity(item.id, item.quantity - 1)} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", ...F(14, 400, "#888") }}>−</div>
+                      <div onClick={() => updateQuantity(item._id, item.quantity - 1)} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", ...F(14, 400, "#888") }}>−</div>
                       <div style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", ...F(11, 400, C.ink) }}>{item.quantity}</div>
-                      <div onClick={() => updateQuantity(item.id, item.quantity + 1)} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", ...F(14, 400, "#888"), borderLeft: `0.5px solid ${C.border}` }}>+</div>
+                      <div onClick={() => updateQuantity(item._id, item.quantity + 1)} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", ...F(14, 400, "#888"), borderLeft: `0.5px solid ${C.border}` }}>+</div>
                     </div>
                   </div>
                 </div>
@@ -79,7 +77,6 @@ export default function CartPage() {
             </Link>
           </div>
         </div>
-       
       </div>
     </Layout>
   );
