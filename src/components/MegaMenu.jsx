@@ -1,13 +1,42 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import api from "../api";
 import { C, F, Ser } from "../designTokens";
 
-const categories = [
+// Used until the API responds, and if it fails.
+const FALLBACK = [
   "Summer Discounts", "Trendy Abayas", "Winter Abayas", "Black Abayas",
   "Daily Abayas", "Work Abayas", "Event Abayas", "Bisht",
   "Jalabiya", "Niqab", "Gloves", "School",
 ];
 
+const toSlug = (name = "") =>
+  name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
 export default function MegaMenu({ open, onClose }) {
+  const [categories, setCategories] = useState(
+    FALLBACK.map((name) => ({ name, slug: toSlug(name) }))
+  );
+
+  useEffect(() => {
+    let alive = true;
+
+    api
+      .get("/collections")
+      .then((res) => {
+        if (!alive) return;
+        const list = (res.data || [])
+          .filter((c) => c.name)
+          .map((c) => ({ name: c.name, slug: c.slug || toSlug(c.name) }));
+        if (list.length) setCategories(list);
+      })
+      .catch(() => {});
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   if (!open) return null;
 
   return (
@@ -25,14 +54,14 @@ export default function MegaMenu({ open, onClose }) {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px,1fr))", columnGap: 32, rowGap: 12 }}>
               {categories.map((cat) => (
                 <Link
-                  key={cat}
-                  to={`/category/${cat.toLowerCase().replace(/\s+/g, "-")}`}
+                  key={cat.slug}
+                  to={`/category/${cat.slug}`}
                   onClick={onClose}
                   style={{ textDecoration: "none", ...F(12, 400, C.ink), lineHeight: 2, transition: "color 0.15s", whiteSpace: "nowrap" }}
                   onMouseEnter={(e) => e.currentTarget.style.color = C.brandRed}
                   onMouseLeave={(e) => e.currentTarget.style.color = C.ink}
                 >
-                  {cat}
+                  {cat.name}
                 </Link>
               ))}
             </div>

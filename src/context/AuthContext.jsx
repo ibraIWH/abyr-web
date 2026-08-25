@@ -55,7 +55,7 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem("abyr_token");
-    sessionStorage.removeItem("cart");
+    // sessionStorage.removeItem("cart");   ← DELETE THIS LINE
     setUser(null);
     window.dispatchEvent(new Event("cartUpdated"));
     window.location.href = "/";

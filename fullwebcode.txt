@@ -117,6 +117,8 @@ const ToastItem = ({ toast, onClose }) => {
   );
 };FILE: src/context/CartContext.jsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import api from '../api'; // your central Axios instance
+import { useAuth } from './AuthContext'; // we need to know if logged in
 
 const CartContext = createContext();
 
@@ -127,54 +129,75 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }) => {
-  const [cart, setCart] = useState(() => {
-    const saved = sessionStorage.getItem('abyr_cart');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const { user } = useAuth();                      // current user (null if not logged in)
+  const [cart, setCart] = useState([]);            // array of cart items
+  const [loading, setLoading] = useState(false);
 
+  // Fetch cart from server whenever user changes
   useEffect(() => {
-    sessionStorage.setItem('abyr_cart', JSON.stringify(cart));
-  }, [cart]);
+    if (user) {
+      setLoading(true);
+      api.get('/cart')
+        .then(res => setCart(res.data.items))
+        .catch(() => setCart([]))
+        .finally(() => setLoading(false));
+    } else {
+      setCart([]);
+    }
+  }, [user]);
 
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
-  const addToCart = (product, qty = 1) => {
-    setCart(prev => {
-      const existing = prev.find(i => i.id === product._id);
-      if (existing) {
-        return prev.map(i =>
-          i.id === product._id ? { ...i, quantity: i.quantity + qty } : i
-        );
-      }
-      return [...prev, {
-        id: product._id,
-        name: product.name,
-        price: product.salePrice || product.price,
-        imageUrl: product.imageUrl,
-        quantity: qty,
-      }];
-    });
+  const addToCart = async (product, quantity = 1, size = 'M') => {
+    if (!user) return;                             // must be logged in
+    try {
+      const res = await api.post('/cart', {
+        productId: product._id,
+        quantity,
+        size,
+      });
+      setCart(res.data.items);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const removeFromCart = (id) => {
-    setCart(prev => prev.filter(i => i.id !== id));
-  };
-
-  const updateQuantity = (id, qty) => {
-    if (qty <= 0) {
-      removeFromCart(id);
+  const updateQuantity = async (itemId, newQty) => {
+    if (!user) return;
+    if (newQty <= 0) {
+      removeFromCart(itemId);
       return;
     }
-    setCart(prev => prev.map(i => i.id === id ? { ...i, quantity: qty } : i));
+    try {
+      const res = await api.put(`/cart/${itemId}`, { quantity: newQty });
+      setCart(res.data.items);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const clearCart = () => {
-    setCart([]);
-    sessionStorage.removeItem('abyr_cart');
+  const removeFromCart = async (itemId) => {
+    if (!user) return;
+    try {
+      const res = await api.delete(`/cart/${itemId}`);
+      setCart(res.data.items);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const clearCart = async () => {
+    if (!user) return;
+    try {
+      await api.delete('/cart');
+      setCart([]);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
-    <CartContext.Provider value={{ cart, cartCount, addToCart, removeFromCart, updateQuantity, clearCart }}>
+    <CartContext.Provider value={{ cart, cartCount, loading, addToCart, updateQuantity, removeFromCart, clearCart }}>
       {children}
     </CartContext.Provider>
   );
@@ -593,6 +616,7 @@ export default function TestimonialsSection() {
   );
 }FILE: src/components/Layout.jsx
 import AnnouncementBar from "./AnnouncementBar";
+import Footer from "./Footer";
 import Navbar from "./Navbar";
 
 export default function Layout({ children }) {
@@ -600,9 +624,12 @@ export default function Layout({ children }) {
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <AnnouncementBar />
       <Navbar />
+      {/* flex: 1 makes the children area fill remaining space */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         {children}
       </div>
+      {/* Footer is now part of the Layout, always pushed to the bottom */}
+      <Footer />
     </div>
   );
 }FILE: src/components/QuickViewModal.jsx
@@ -1661,7 +1688,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import api from "../api";
 import Breadcrumb from "../components/Breadcrumb";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { addToRecentlyViewed } from "../components/RecentlyViewed";
 import { useAuth } from "../context/AuthContext";
@@ -2161,7 +2187,7 @@ export default function ProductPage() {
           </div>
         )}
 
-        <Footer />
+       
       </div>
     </Layout>
   );
@@ -2171,7 +2197,6 @@ import { useParams } from "react-router-dom";
 import api from "../api";
 import CategoryNav from "../components/CategoryNav";
 import FilterSidebar from "../components/FilterSidebar";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import ProductCard from "../components/ProductCard";
 import { C, F, Ser } from "../designTokens";
@@ -2253,13 +2278,12 @@ export default function CategoryPage() {
             )}
           </div>
         </div>
-        <Footer />
+        
       </div>
     </Layout>
   );
 }FILE: src/pages/TrackingPage.jsx
 import { useSearchParams } from "react-router-dom";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -2319,7 +2343,7 @@ export default function TrackingPage() {
           </div>
         </div>
       </div>
-      <Footer />
+   
     </div>
     </Layout>
   );
@@ -2331,7 +2355,6 @@ const Cap = (c = "#8B7355") => ({
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
@@ -2358,7 +2381,7 @@ export default function AccountPage() {
               Sign In
             </Link>
           </div>
-          <Footer />
+          
         </div>
       </Layout>
     );
@@ -2475,7 +2498,7 @@ export default function AccountPage() {
             {activeSection === "settings" && <SettingsPage standalone={false} />}
           </div>
         </div>
-        <Footer />
+
       </div>
     </Layout>
   );
@@ -2483,7 +2506,6 @@ export default function AccountPage() {
 import { useEffect, useState } from "react";
 import api from "../api";
 import CategoryNav from "../components/CategoryNav";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout"; // ← THIS WAS MISSING
 import NewsletterSection from "../components/NewsletterSection";
 import ProductCard from "../components/ProductCard";
@@ -2592,14 +2614,13 @@ export default function HomePage() {
         <TestimonialsSection />
         <NewsletterSection />
 
-        <Footer />
+        
       </div>
     </Layout>
   );
 }FILE: src/pages/PaymentPage.jsx
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -2710,7 +2731,7 @@ export default function PaymentPage() {
           </button>
         </div>
       </div>
-      <Footer />
+     
     </div>
     </Layout>
   );
@@ -2725,7 +2746,6 @@ const fieldStyle = {
   outline: "none",
   boxSizing: "border-box",
 };FILE: src/pages/SizeGuidePage.jsx
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -2784,13 +2804,12 @@ export default function SizeGuidePage() {
           ))}
         </div>
       </div>
-      <Footer />
+     
     </div>
     </Layout>
   );
 }FILE: src/pages/NotFoundPage.jsx
 import { Link } from "react-router-dom";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -2817,7 +2836,7 @@ export default function NotFoundPage() {
           Back to Home
         </Link>
       </div>
-      <Footer />
+      
     </div>
     </Layout>
   );
@@ -2825,7 +2844,6 @@ export default function NotFoundPage() {
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
@@ -2851,7 +2869,7 @@ export default function PhoneVerifyPage() {
             </div>
           </div>
         </div>
-        <Footer />
+        
       </div>
       </Layout>
     );
@@ -2946,7 +2964,7 @@ export default function PhoneVerifyPage() {
           )}
         </div>
       </div>
-      <Footer />
+    
     </div>
     </Layout>
   );
@@ -2954,7 +2972,6 @@ export default function PhoneVerifyPage() {
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import ProductCard from "../components/ProductCard";
 import { C, F, Ser } from "../designTokens";
@@ -3053,14 +3070,13 @@ export default function SearchPage() {
           </div>
         )}
       </div>
-      <Footer />
+     
     </div>
     </Layout>
   );
 }FILE: src/pages/SignUpPage.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
@@ -3134,14 +3150,13 @@ export default function SignUpPage() {
           </div>
         </div>
       </div>
-      <Footer />
+     
     </div>
     </Layout>
   );
 }FILE: src/pages/SignInPage.jsx
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
@@ -3209,7 +3224,7 @@ export default function SignInPage() {
           </div>
         </div>
       </div>
-      <Footer />
+   
     </div>
     </Layout>
   );
@@ -3217,7 +3232,6 @@ export default function SignInPage() {
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -3305,13 +3319,12 @@ export default function EmailVerifyPage() {
           )}
         </div>
       </div>
-      <Footer />
+   
     </div>
     </Layout>
   );
 }FILE: src/pages/OrderConfirmedPage.jsx
 import { Link, useSearchParams } from "react-router-dom";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -3346,13 +3359,12 @@ export default function OrderConfirmedPage() {
           </Link>
         </div>
       </div>
-      <Footer />
+    
     </div>
     </Layout>
   );
 }FILE: src/pages/SettingsPage.jsx
 import { useState } from "react";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
@@ -3411,7 +3423,7 @@ export default function SettingsPage({ standalone = true }) {
     <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {content}
-      <Footer />
+    
     </div>
     </Layout>
   );
@@ -3419,7 +3431,6 @@ export default function SettingsPage({ standalone = true }) {
 import { useEffect, useState } from "react";
 import api from "../api";
 import EmptyState from '../components/EmptyState';
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import ProductCard from "../components/ProductCard";
 import { useAuth } from "../context/AuthContext";
@@ -3474,14 +3485,13 @@ export default function FavouritesPage({ standalone = true }) {
     <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {content}
-      <Footer />
+     
     </div>
     </Layout>
   );
 }FILE: src/pages/CartPage.jsx
 import { Link } from "react-router-dom";
 import EmptyState from "../components/EmptyState";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useCart } from "../context/CartContext";
 import { C, Cap, F, Ser } from "../designTokens";
@@ -3496,7 +3506,6 @@ export default function CartPage() {
       <Layout>
         <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
           <EmptyState title="Your cart is empty" message="Looks like you haven't added anything yet." showShopButton={true} />
-          <Footer />
         </div>
       </Layout>
     );
@@ -3505,12 +3514,11 @@ export default function CartPage() {
   return (
     <Layout>
       <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        {/* flex: 1 makes this area expand, pushing the footer down */}
         <div style={{ flex: 1, padding: "28px 64px", display: "grid", gridTemplateColumns: "1fr 340px", gap: 48, alignItems: "start" }}>
           <div>
             <h1 style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Shopping Bag ({cart.length})</h1>
             {cart.map((item) => (
-              <div key={item.id} style={{ display: "flex", gap: 18, paddingBottom: 20, marginBottom: 20, borderBottom: `0.5px solid ${C.border}` }}>
+              <div key={item._id} style={{ display: "flex", gap: 18, paddingBottom: 20, marginBottom: 20, borderBottom: `0.5px solid ${C.border}` }}>
                 <div style={{ width: 90, height: 110, background: "#EDE8E0", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.name} style={{ maxHeight: "100%", maxWidth: "100%" }} />
@@ -3523,17 +3531,17 @@ export default function CartPage() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <div style={{ ...F(12, 500, C.ink) }}>{item.name}</div>
-                    <span onClick={() => removeFromCart(item.id)} style={{ cursor: "pointer", fontSize: 16, color: "#CCC" }}>×</span>
+                    <span onClick={() => removeFromCart(item._id)} style={{ cursor: "pointer", fontSize: 16, color: "#CCC" }}>×</span>
                   </div>
                   <div style={{ ...F(10, 400, "#888"), marginBottom: 12 }}>
-                    Qty: {item.quantity}
+                    Size {item.size} · Qty: {item.quantity}
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ ...Ser(16, 300, C.tan) }}>SAR {parseFloat(item.price).toFixed(2)}</div>
                     <div style={{ display: "flex", border: `0.5px solid ${C.border}` }}>
-                      <div onClick={() => updateQuantity(item.id, item.quantity - 1)} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", ...F(14, 400, "#888") }}>−</div>
+                      <div onClick={() => updateQuantity(item._id, item.quantity - 1)} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", ...F(14, 400, "#888") }}>−</div>
                       <div style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", ...F(11, 400, C.ink) }}>{item.quantity}</div>
-                      <div onClick={() => updateQuantity(item.id, item.quantity + 1)} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", ...F(14, 400, "#888"), borderLeft: `0.5px solid ${C.border}` }}>+</div>
+                      <div onClick={() => updateQuantity(item._id, item.quantity + 1)} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", ...F(14, 400, "#888"), borderLeft: `0.5px solid ${C.border}` }}>+</div>
                     </div>
                   </div>
                 </div>
@@ -3561,14 +3569,13 @@ export default function CartPage() {
             </Link>
           </div>
         </div>
-        <Footer />
       </div>
     </Layout>
   );
 }FILE: src/pages/CheckoutPage.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Footer from "../components/Footer";
+import api from "../api"; // ← MISSING IMPORT
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
@@ -3617,14 +3624,27 @@ export default function CheckoutPage() {
       return;
     }
     setSubmitting(true);
-    setTimeout(() => {
+    try {
+      const orderData = {
+        items: cart.map((item) => ({
+          productId: item.id,
+          quantity: item.quantity,
+          size: item.size || "M",
+        })),
+        shippingAddress: selectedAddress,
+        paymentMethod: "cod",
+      };
+      const res = await api.post("/orders", orderData);
       clearCart();
       addToast("Order placed successfully!", "success");
-      navigate(`/order-confirmed?order=ABR-${Date.now().toString().slice(-8)}`);
+      navigate(`/order-confirmed?order=${res.data.orderNumber}`);
+    } catch (err) {
+      addToast(err.response?.data?.message || "Failed to place order", "error");
+    } finally {
       setSubmitting(false);
-    }, 1500);
+    }
   };
-
+  
   if (cart.length === 0) {
     return (
       <Layout>
@@ -3647,7 +3667,6 @@ export default function CheckoutPage() {
             </Link>
           </div>
         </div>
-        <Footer />
       </Layout>
     );
   }
@@ -3761,7 +3780,6 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
-      <Footer />
     </Layout>
   );
 }
@@ -3787,8 +3805,8 @@ const Cap = (c = C.tan) => ({
 });FILE: src/pages/OrdersPage.jsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import api from "../api";
 import EmptyState from "../components/EmptyState";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
@@ -3799,29 +3817,67 @@ export default function OrdersPage({ standalone = true }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const lastOrder = JSON.parse(localStorage.getItem("lastOrder") || "null");
-    if (lastOrder) setOrders([lastOrder]);
-    setLoading(false);
-  }, []);
+    if (!user) return;
+    api.get("/orders")
+      .then((res) => setOrders(res.data))
+      .catch((err) => console.error(err))
+      .finally(() => setLoading(false));
+  }, [user]);
 
   if (!user) {
-    return <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>Please sign in to view your orders.</div>;
+    return (
+      <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>
+        Please sign in to view your orders.
+      </div>
+    );
   }
 
-  if (loading) return <div style={{ ...F(14, 400, "#888"), padding: 40, textAlign: "center" }}>Loading...</div>;
-  if (orders.length === 0) return <EmptyState title="No orders yet" message="When you place an order, it will appear here." showShopButton={true} />;
+  if (loading) {
+    return <div style={{ ...F(14, 400, "#888"), padding: 40, textAlign: "center" }}>Loading...</div>;
+  }
+
+  if (orders.length === 0) {
+    return (
+      <EmptyState
+        title="No orders yet"
+        message="When you place an order, it will appear here."
+        showShopButton={true}
+      />
+    );
+  }
 
   const content = (
     <div style={{ padding: standalone ? "28px 64px" : "0" }}>
       <h1 style={{ ...Ser(32, 300, C.ink), marginBottom: 24 }}>My Orders</h1>
-      {orders.map(order => (
-        <div key={order.id} style={{ border: `0.5px solid ${C.border}`, background: C.white, padding: "16px", marginBottom: 16 }}>
+      {orders.map((order) => (
+        <div
+          key={order._id}
+          style={{
+            border: `0.5px solid ${C.border}`,
+            background: C.white,
+            padding: "16px",
+            marginBottom: 16,
+          }}
+        >
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-            <span style={{ ...F(11, 500, C.ink) }}>Order #{order.id}</span>
-            <span style={{ ...F(10, 400, "#888") }}>{order.date}</span>
+            <span style={{ ...F(11, 500, C.ink) }}>#{order.orderNumber}</span>
+            <span style={{ ...F(10, 400, "#888") }}>
+              {new Date(order.createdAt).toLocaleDateString()}
+            </span>
           </div>
-          <div style={{ ...Ser(16, 300, C.tan) }}>SAR {order.total}</div>
-          <Link to={`/tracking?order=${order.id}`} style={{ ...F(10, 400, C.brandRed), textDecoration: "underline", marginTop: 8, display: "inline-block" }}>
+          <div style={{ ...F(10, 400, "#888"), marginBottom: 4 }}>
+            {order.items?.length} item(s) · {order.status}
+          </div>
+          <div style={{ ...Ser(16, 300, C.tan) }}>SAR {parseFloat(order.total).toFixed(2)}</div>
+          <Link
+            to={`/tracking?order=${order.orderNumber}`}
+            style={{
+              ...F(10, 400, C.brandRed),
+              textDecoration: "underline",
+              marginTop: 8,
+              display: "inline-block",
+            }}
+          >
             Track Order →
           </Link>
         </div>
@@ -3829,19 +3885,17 @@ export default function OrdersPage({ standalone = true }) {
     </div>
   );
 
-  if (!standalone) return content;
-
-  return (
+  return standalone ? (
     <Layout>
-    <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {content}
-      <Footer />
-    </div>
+      <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        {content}
+      </div>
     </Layout>
+  ) : (
+    content
   );
 }FILE: src/pages/AddressesPage.jsx
 import { useState } from "react";
-import Footer from "../components/Footer";
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -3883,7 +3937,7 @@ export default function AddressesPage({ standalone = true }) {
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
      
       {content}
-      <Footer />
+      
     </div>
     </Layout>
   );

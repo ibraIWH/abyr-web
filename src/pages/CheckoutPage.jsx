@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import api from "../api"; // ← MISSING IMPORT
+import api from "../api";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
@@ -52,7 +52,7 @@ export default function CheckoutPage() {
     try {
       const orderData = {
         items: cart.map((item) => ({
-          productId: item.id,
+          productId: item.product?._id,    // ✅ server cart item has populated product
           quantity: item.quantity,
           size: item.size || "M",
         })),
@@ -191,7 +191,7 @@ export default function CheckoutPage() {
           <div style={{ flex: 1, background: C.cream, padding: "1.5rem", border: `0.5px solid ${C.border}` }}>
             <div style={{ ...Cap(C.tan), marginBottom: 18 }}>Order Summary</div>
             {cart.map((item) => (
-              <div key={item.id} style={{ display: "flex", justifyContent: "space-between",
+              <div key={item._id} style={{ display: "flex", justifyContent: "space-between",
                 marginBottom: "0.5rem", ...F(11, 400, C.ink) }}>
                 <span>{item.name} x{item.quantity}</span>
                 <span>{(item.price * item.quantity).toFixed(2)} SAR</span>

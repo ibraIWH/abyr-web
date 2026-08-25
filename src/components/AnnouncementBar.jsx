@@ -1,9 +1,16 @@
-import { C, F } from "../designTokens";
+import { useSettings } from '../context/SettingsContext';
+import { C, F } from '../designTokens';
 
 export default function AnnouncementBar() {
+  const { newsText, newsActive } = useSettings();
+
+  // If news is disabled by admin, hide the bar completely
+  if (!newsActive) return null;
+
+  const message = newsText || 'FREE DELIVERY OVER SAR 200 · NEW COLLECTION · EASY RETURNS';
+
   return (
     <>
-      {/* Scrolling animation keyframes */}
       <style>{`
         @keyframes scrollAnnouncement {
           0% { transform: translateX(100%); }
@@ -16,20 +23,20 @@ export default function AnnouncementBar() {
         }
       `}</style>
 
-      <div style={{
-        background: C.ink,            // ← ink black for a more editorial look
-        color: C.cream,
-        overflow: "hidden",
-        whiteSpace: "nowrap",
-        position: "sticky",
-        top: 0,
-        zIndex: 1001,
-        padding: "8px 0",
-      }}>
+      <div
+        style={{
+          background: C.ink,
+          color: C.cream,
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1001,
+          padding: '8px 0',
+        }}
+      >
         <div className="announcement-track" style={{ ...F(10, 400, C.cream), letterSpacing: 1.5 }}>
-          FREE DELIVERY OVER SAR 200 &nbsp;·&nbsp; NEW COLLECTION &nbsp;·&nbsp; EASY RETURNS &nbsp;·&nbsp;
-          FREE DELIVERY OVER SAR 200 &nbsp;·&nbsp; NEW COLLECTION &nbsp;·&nbsp; EASY RETURNS &nbsp;·&nbsp;
-          FREE DELIVERY OVER SAR 200 &nbsp;·&nbsp; NEW COLLECTION &nbsp;·&nbsp; EASY RETURNS
+          {message} &nbsp;·&nbsp; {message} &nbsp;·&nbsp; {message}
         </div>
       </div>
     </>
