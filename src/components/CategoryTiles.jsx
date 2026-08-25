@@ -19,7 +19,7 @@ export default function CategoryTiles() {
     let alive = true;
 
     api
-      .get("/collections") // active only, sorted by "order"
+      .get("/categories") // active only, sorted by "order"
       .then((res) => {
         if (!alive) return;
         const withImages = (res.data || []).filter((c) => c.name && c.imageUrl);

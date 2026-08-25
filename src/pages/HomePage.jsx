@@ -10,7 +10,6 @@ import RecentlyViewed from '../components/RecentlyViewed';
 import TestimonialsSection from '../components/TestimonialsSection';
 import { useSettings } from '../context/SettingsContext';
 import { C, F, Ser } from '../designTokens';
-
 export default function HomePage() {
   const { hero, offers, collections } = useSettings();
   const [products, setProducts] = useState([]);
@@ -95,7 +94,7 @@ export default function HomePage() {
         </div>
 
         <CategoryNav />
-        <CategoryTiles />
+                <CategoryTiles />
 
         {/* Offers section */}
         {offers && offers.length > 0 && (

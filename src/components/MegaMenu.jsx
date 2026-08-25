@@ -22,7 +22,7 @@ export default function MegaMenu({ open, onClose }) {
     let alive = true;
 
     api
-      .get("/collections")
+      .get("/categories")
       .then((res) => {
         if (!alive) return;
         const list = (res.data || [])

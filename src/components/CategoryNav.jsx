@@ -25,7 +25,7 @@ export default function CategoryNav() {
     let alive = true;
 
     api
-      .get("/collections") // public endpoint: only active ones, already sorted by "order"
+      .get("/categories") // public endpoint: only active ones, already sorted by "order"
       .then((res) => {
         if (!alive) return;
         const list = (res.data || [])
