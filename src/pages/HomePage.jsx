@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 import CategoryNav from '../components/CategoryNav';
-import CategoryTiles from "../components/CategoryTiles";
 import Layout from '../components/Layout';
 import NewsletterSection from '../components/NewsletterSection';
 import ProductCard from '../components/ProductCard';
@@ -11,7 +10,7 @@ import TestimonialsSection from '../components/TestimonialsSection';
 import { useSettings } from '../context/SettingsContext';
 import { C, F, Ser } from '../designTokens';
 export default function HomePage() {
-  const { hero, offers, collections } = useSettings();
+  const { hero, offers, categories } = useSettings();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -94,44 +93,151 @@ export default function HomePage() {
         </div>
 
         <CategoryNav />
-                <CategoryTiles />
 
-        {/* Offers section */}
+        {/* Offers — split card: portrait photo on the left, brand-red panel on the
+            right. Same idea as the hero, kept compact rather than full width.
+            Sizes to adjust: 190px = photo width, 260px = card height. */}
         {offers && offers.length > 0 && (
           <div style={{ padding: '20px 64px' }}>
             <h2 style={{ ...Ser(28, 300, C.ink), marginBottom: 16 }}>Offers</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px,1fr))', gap: 16 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 500px))',
+                gap: 18,
+              }}
+            >
               {offers.map((offer) => (
                 <Link
                   key={offer._id}
                   to={offer.link || '#'}
                   style={{
-                    position: 'relative',
-                    aspectRatio: '16/5',
+                    display: 'flex',
+                    minHeight: 260,
+                    borderRadius: 0,
                     overflow: 'hidden',
+                    background: C.ink,
+                    boxShadow: '0 2px 14px rgba(0,0,0,0.08)',
                     textDecoration: 'none',
-                    color: C.white,
-                    background: C.brandRed,
-                    display: 'block',
-                    borderRadius: 8,
+                    transition: 'transform 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-3px)';
+                    const img = e.currentTarget.querySelector('img');
+                    if (img) img.style.transform = 'scale(1.04)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    const img = e.currentTarget.querySelector('img');
+                    if (img) img.style.transform = 'scale(1)';
                   }}
                 >
-                  {offer.imageUrl && (
-                    <img
-                      src={offer.imageUrl}
-                      alt={offer.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', inset: 0 }}
+                  {/* Photo side */}
+                  <div style={{ flex: '0 0 230px', position: 'relative', background: C.cream, overflow: 'hidden' }}>
+                    {offer.imageUrl ? (
+                      <img
+                        src={offer.imageUrl}
+                        alt={offer.title}
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          objectPosition: 'top center',   // keeps heads in frame
+                          display: 'block',
+                          transition: 'transform 0.6s ease',
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          ...F(10, 400, '#999'),
+                          textAlign: 'center',
+                          padding: 8,
+                        }}
+                      >
+                        {offer.title}
+                      </div>
+                    )}
+
+                    {/* Soft fade so the photo melts into the panel
+                        rather than stopping at a hard vertical edge. */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background:
+                          'linear-gradient(to right,' +
+                          ' rgba(26,26,26,0) 0%,' +
+                          ' rgba(26,26,26,0.015) 18%,' +
+                          ' rgba(26,26,26,0.05) 30%,' +
+                          ' rgba(26,26,26,0.10) 40%,' +
+                          ' rgba(26,26,26,0.18) 49%,' +
+                          ' rgba(26,26,26,0.28) 57%,' +
+                          ' rgba(26,26,26,0.40) 64%,' +
+                          ' rgba(26,26,26,0.53) 71%,' +
+                          ' rgba(26,26,26,0.66) 78%,' +
+                          ' rgba(26,26,26,0.78) 84%,' +
+                          ' rgba(26,26,26,0.88) 89%,' +
+                          ' rgba(26,26,26,0.95) 94%,' +
+                          ' rgba(26,26,26,1) 100%)',
+                        pointerEvents: 'none',
+                      }}
                     />
-                  )}
-                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)' }} />
-                  <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
+                  </div>
+
+                  {/* Text panel side */}
+                  <div
+                    style={{
+                      flex: 1,
+                      padding: '24px 26px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',   // badge top, title middle, CTA bottom
+                    }}
+                  >
                     {offer.badgeText && (
-                      <span style={{ background: C.gold, color: C.ink, padding: '2px 10px', ...F(9, 500), display: 'inline-block', marginBottom: 6, borderRadius: 4 }}>
+                      <span
+                        style={{
+                          background: C.gold,
+                          color: C.ink,
+                          ...F(9, 500),
+                          letterSpacing: 1.2,
+                          padding: '5px 11px',
+                          borderRadius: 0,
+                          alignSelf: 'flex-start',
+                        }}
+                      >
                         {offer.badgeText}
                       </span>
                     )}
-                    <div style={{ ...Ser(22, 300, C.white) }}>{offer.title}</div>
-                    {offer.subtitle && <div style={{ ...F(11, 400, 'rgba(255,255,255,0.7)') }}>{offer.subtitle}</div>}
+
+                    <div>
+                      <div style={{ ...Ser(30, 300, C.cream), lineHeight: 1.1 }}>{offer.title}</div>
+                      {offer.subtitle && (
+                        <div style={{ ...F(11, 400, 'rgba(255,255,255,0.72)'), lineHeight: 1.6, marginTop: 8 }}>
+                          {offer.subtitle}
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        ...F(9, 500, C.gold),
+                        letterSpacing: 1.6,
+                        textTransform: 'uppercase',
+                        borderTop: '1px solid rgba(196,168,130,0.28)',
+                        paddingTop: 12,
+                      }}
+                    >
+                      Shop now →
+                    </div>
                   </div>
                 </Link>
               ))}
@@ -139,11 +245,11 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Collections section – NARROW DESIGN like mobile app cards */}
-        {collections && collections.length > 0 && (
+        {/* Categories section – NARROW DESIGN like mobile app cards */}
+        {categories && categories.length > 0 && (
           <div style={{ padding: '20px 64px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ ...Ser(28, 300, C.ink) }}>Shop by Collection</h2>
+              <h2 style={{ ...Ser(28, 300, C.ink) }}>Shop by Category</h2>
               <Link
                 to="/category/all"
                 style={{ ...F(10, 400, C.tan), textDecoration: 'none', letterSpacing: 1 }}
@@ -161,12 +267,12 @@ export default function HomePage() {
                 WebkitOverflowScrolling: 'touch',
               }}
             >
-              {collections.map((col) => (
+              {categories.map((col) => (
                 <Link
                   key={col._id}
                   to={`/category/${col.slug}`}
                   style={{
-                    flex: '0 0 130px', // ← narrower (was 200px)
+                    flex: '0 0 200px',   // same width as the offer cards
                     textDecoration: 'none',
                     color: C.ink,
                     scrollSnapAlign: 'start',
@@ -174,11 +280,11 @@ export default function HomePage() {
                 >
                   <div
                     style={{
-                      aspectRatio: '3/4', // ← portrait, like a phone app card
-                      borderRadius: 12,
+                      aspectRatio: '3/4',
+                      borderRadius: 0,
                       overflow: 'hidden',
                       background: C.cream,
-                      boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                      boxShadow: '0 2px 14px rgba(0,0,0,0.08)',
                       transition: 'transform 0.2s ease',
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.03)')}
@@ -209,8 +315,8 @@ export default function HomePage() {
                   </div>
                   <div
                     style={{
-                      ...F(10, 500, C.ink),
-                      marginTop: 8,
+                      ...F(11, 500, C.ink),
+                      marginTop: 10,
                       textAlign: 'center',
                       letterSpacing: 0.3,
                     }}

@@ -1,68 +1,61 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import api from "../api";
+import { useSettings } from "../context/SettingsContext";
 import { C, F } from "../designTokens";
-
-// Shown while the API loads, and kept if the request fails,
-// so the nav is never empty on the live site.
-const FALLBACK = [
-  { label: "Abaya", slug: "abaya" },
-  { label: "Jalabiya", slug: "jalabiya" },
-  { label: "Niqab", slug: "niqab" },
-  { label: "Bisht", slug: "bisht" },
-  { label: "Gloves", slug: "gloves" },
-  { label: "School", slug: "school" },
-];
 
 const toSlug = (name = "") =>
   name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 export default function CategoryNav() {
-  const [categories, setCategories] = useState(FALLBACK);
+  // No fetch of its own — the app already loads categories once in
+  // SettingsContext. Fetching here as well meant a second request and a
+  // second, differently-timed loading state, which is what caused the
+  // menu to change in front of the customer a few seconds after load.
+  const { categories, loading } = useSettings();
 
-  useEffect(() => {
-    // `alive` stops us updating state if the user navigates away mid-request.
-    let alive = true;
+  const barStyle = {
+    background: C.white,
+    borderBottom: `0.5px solid ${C.border}`,
+    position: "sticky",
+    top: 80,
+    zIndex: 900,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 24,
+    padding: "10px 0",
+    flexWrap: "wrap",
+    minHeight: 41, // reserved height so the page never jumps when items arrive
+  };
 
-    api
-      .get("/categories") // public endpoint: only active ones, already sorted by "order"
-      .then((res) => {
-        if (!alive) return;
-        const list = (res.data || [])
-          .filter((c) => c.name)
-          .map((c) => ({ label: c.name, slug: c.slug || toSlug(c.name) }));
-        if (list.length) setCategories(list); // only replace if we actually got some
-      })
-      .catch(() => {
-        /* network error — keep the fallback list */
-      });
+  // While loading, show neutral placeholders instead of an out-of-date list.
+  if (loading) {
+    return (
+      <div style={barStyle}>
+        {[64, 78, 56, 70, 60, 52].map((w, i) => (
+          <span
+            key={i}
+            style={{
+              display: "inline-block",
+              width: w,
+              height: 10,
+              borderRadius: 3,
+              background: C.border,
+              opacity: 0.7,
+            }}
+          />
+        ))}
+      </div>
+    );
+  }
 
-    return () => {
-      alive = false;
-    };
-  }, []);
+  if (!categories.length) return null;
 
   return (
-    <div
-      style={{
-        background: C.white,
-        borderBottom: `0.5px solid ${C.border}`,
-        position: "sticky",
-        top: 80, // height of the main navbar
-        zIndex: 900,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 24,
-        padding: "10px 0",
-        flexWrap: "wrap",
-      }}
-    >
-      {/* Category links */}
+    <div style={barStyle}>
       {categories.map((cat) => (
         <Link
-          key={cat.slug}
-          to={`/category/${cat.slug}`}
+          key={cat._id || cat.slug}
+          to={`/category/${cat.slug || toSlug(cat.name)}`}
           style={{
             ...F(10, 400, C.ink),
             letterSpacing: 1.5,
@@ -75,7 +68,7 @@ export default function CategoryNav() {
           onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = C.brandRed)}
           onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = "transparent")}
         >
-          {cat.label}
+          {cat.name}
         </Link>
       ))}
     </div>
