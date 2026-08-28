@@ -28,6 +28,15 @@ export default function CategoryNav() {
     overflowX: 'auto',
     flexWrap: isMobile ? "nowrap" : "wrap",
     minHeight: 41, // reserved height so the page never jumps when items arrive
+    // Fades the last item out at the right edge, which signals the row scrolls
+    // instead of leaving a word chopped in half.
+    ...(isMobile
+      ? {
+          WebkitMaskImage: 'linear-gradient(to right, #000 82%, transparent 100%)',
+          maskImage: 'linear-gradient(to right, #000 82%, transparent 100%)',
+          scrollbarWidth: 'none',
+        }
+      : {}),
   };
 
   // While loading, show neutral placeholders instead of an out-of-date list.

@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { C, F } from "../designTokens";
+import { useIsMobile } from "../responsive";
 
 export default function FilterSidebar({ onFilter, products }) {
+  const isMobile = useIsMobile();
+  // On a phone the filters start collapsed — otherwise they fill the whole
+  // screen and the customer has to scroll past them to reach any product.
+  const [open, setOpen] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 500]);
   const [selectedColors, setSelectedColors] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState([]);
@@ -25,13 +30,45 @@ export default function FilterSidebar({ onFilter, products }) {
   };
 
   return (
-    <div style={{ padding: "20px", borderRight: `0.5px solid ${C.border}`, width: 220, flexShrink: 0 }}>
-      <div style={{ ...F(11, 500, C.ink), marginBottom: 20 }}>Filters</div>
+    <div
+      style={{
+        padding: isMobile ? "12px clamp(16px, 4vw, 32px)" : "20px",
+        borderRight: isMobile ? "none" : `0.5px solid ${C.border}`,
+        borderBottom: isMobile ? `0.5px solid ${C.border}` : "none",
+        width: isMobile ? "100%" : 220,
+        flexShrink: 0,
+      }}
+    >
+      {isMobile ? (
+        <button
+          onClick={() => setOpen(!open)}
+          style={{
+            ...F(11, 500, C.ink),
+            width: "100%",
+            background: "none",
+            border: `0.5px solid ${C.border}`,
+            padding: "12px 14px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            cursor: "pointer",
+            letterSpacing: 1,
+            textTransform: "uppercase",
+          }}
+        >
+          Filters
+          <span style={{ fontSize: 13 }}>{open ? "−" : "+"}</span>
+        </button>
+      ) : (
+        <div style={{ ...F(11, 500, C.ink), marginBottom: 20 }}>Filters</div>
+      )}
+
+      <div style={{ display: isMobile && !open ? "none" : "block", marginTop: isMobile ? 18 : 0 }}>
 
       {/* Price */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>Price</div>
-        <input type="range" min="0" max="500" value={priceRange[1]} onChange={(e) => setPriceRange([0, Number(e.target.value)])} style={{ width: "100%" }} />
+        <input type="range" min="0" max="500" value={priceRange[1]} onChange={(e) => setPriceRange([0, Number(e.target.value)])} style={{ width: "100%", accentColor: C.brandRed }} />
         <div style={{ display: "flex", justifyContent: "space-between", ...F(9, 400, "#888") }}>
           <span>SAR 0</span>
           <span>SAR {priceRange[1]}</span>
@@ -88,6 +125,7 @@ export default function FilterSidebar({ onFilter, products }) {
       >
         Apply
       </button>
+      </div>
     </div>
   );
 }

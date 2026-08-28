@@ -46,7 +46,7 @@ export default function Navbar() {
         top: "28px",
         left: 0,
         width: "100%",
-        zIndex: 1000,
+        zIndex: drawerOpen ? 1200 : 1000,
         transition: "all 0.3s ease",
         background: scrolled ? C.sand : "transparent",
         boxShadow: scrolled ? "0 4px 12px rgba(0,0,0,0.05)" : "none",
@@ -174,11 +174,39 @@ export default function Navbar() {
                   style={{
                     ...F(13, 400, C.ink),
                     textDecoration: "none",
-                    padding: "12px 0",
+                    padding: "10px 0",
                     borderBottom: `0.5px solid ${C.border}`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
                   }}
                 >
-                  {cat.name}
+                  <span
+                    style={{
+                      width: 42,
+                      height: 54,
+                      flexShrink: 0,
+                      background: C.cream,
+                      overflow: "hidden",
+                      display: "block",
+                    }}
+                  >
+                    {cat.imageUrl && (
+                      <img
+                        src={cat.imageUrl}
+                        alt=""
+                        loading="lazy"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "top center",
+                          display: "block",
+                        }}
+                      />
+                    )}
+                  </span>
+                  <span>{cat.name}</span>
                 </Link>
               ))}
             </div>
