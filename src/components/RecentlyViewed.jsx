@@ -22,14 +22,14 @@ export default function RecentlyViewed() {
         </div>
         <h2 style={{ ...Ser(28, 300, C.ink) }}>You Recently Looked At</h2>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px,1fr))", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(200px, 46%), 1fr))", gap: "clamp(10px, 2.5vw, 16px)" }}>
         {products.map((prod) => (
           <Link
             key={prod._id}
             to={`/product/${prod._id}`}
             style={{ textDecoration: "none", color: C.ink }}
           >
-            <div style={{ background: "transparent", height: 410, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+            <div style={{ background: "transparent", height: "clamp(240px, 62vw, 410px)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
               {prod.imageUrl ? (
                 <img src={prod.imageUrl} alt={prod.name} style={{ maxHeight: "100%", maxWidth: "100%" }} />
               ) : (

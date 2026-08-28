@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useSettings } from "../context/SettingsContext";
 import { C, F } from "../designTokens";
+import { PAGE_X, useIsMobile } from "../responsive";
 
 const toSlug = (name = "") =>
   name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -11,6 +12,7 @@ export default function CategoryNav() {
   // second, differently-timed loading state, which is what caused the
   // menu to change in front of the customer a few seconds after load.
   const { categories, loading } = useSettings();
+  const isMobile = useIsMobile();
 
   const barStyle = {
     background: C.white,
@@ -20,10 +22,11 @@ export default function CategoryNav() {
     zIndex: 900,
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 24,
-    padding: "10px 0",
-    flexWrap: "wrap",
+    justifyContent: isMobile ? "flex-start" : "center",
+    gap: 'clamp(14px, 3vw, 24px)',
+    padding: `10px ${PAGE_X}`,
+    overflowX: 'auto',
+    flexWrap: isMobile ? "nowrap" : "wrap",
     minHeight: 41, // reserved height so the page never jumps when items arrive
   };
 
@@ -61,6 +64,7 @@ export default function CategoryNav() {
             letterSpacing: 1.5,
             textTransform: "uppercase",
             textDecoration: "none",
+            whiteSpace: "nowrap",
             borderBottom: "1.5px solid transparent",
             paddingBottom: 2,
             transition: "border-color 0.15s",

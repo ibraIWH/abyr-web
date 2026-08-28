@@ -104,13 +104,13 @@ export default function ProductPage() {
             { label: product.name },
           ]}
         />
-        <div style={{ padding: "28px 64px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48 }}>
+        <div style={{ padding: "28px clamp(16px, 5vw, 64px)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: "clamp(20px, 4vw, 48px)" }}>
           {/* Product Images */}
           <div>
             <div
               style={{
                 background: "transparent",
-                height: 600,
+                height: "clamp(380px, 78vw, 600px)",
                 overflow: "hidden",
                 position: "relative",
                 cursor: "zoom-in",
@@ -438,10 +438,12 @@ export default function ProductPage() {
               background: "rgba(250,250,248,0.97)",
               backdropFilter: "blur(10px)",
               borderTop: `0.5px solid ${C.border}`,
-              padding: "12px 64px",
+              padding: "12px clamp(14px, 5vw, 64px)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
               zIndex: 100,
             }}
           >

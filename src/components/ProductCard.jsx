@@ -1,384 +1,284 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import api from '../api';
-import CategoryNav from '../components/CategoryNav';
-import Layout from '../components/Layout';
-import NewsletterSection from '../components/NewsletterSection';
-import ProductCard from '../components/ProductCard';
-import RecentlyViewed from '../components/RecentlyViewed';
-import TestimonialsSection from '../components/TestimonialsSection';
-import { useSettings } from '../context/SettingsContext';
-import { C, F, Ser } from '../designTokens';
-export default function HomePage() {
-  const { hero, offers, categories } = useSettings();
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import api from "../api";
+import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
+import { useToast } from "../context/ToastContext";
+import { C, F, Ser } from "../designTokens";
+import QuickViewModal from "./QuickViewModal";
 
+export default function ProductCard({ product }) {
+  const { user } = useAuth();
+  const { addToCart } = useCart();
+  const { addToast } = useToast();
+
+  const [isFav, setIsFav] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [showQuickView, setShowQuickView] = useState(false);
+  const [currentImage, setCurrentImage] = useState(product.imageUrl);
+
+  const hoverImage = product.imageUrl2 || product.imageUrl;
+
+  // Check if product is already in favourites
   useEffect(() => {
-    api.get('/products')
-      .then((res) => setProducts(res.data))
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
+    if (!user) return;
+    api.get("/favourites")
+      .then(res => {
+        const found = res.data.some(fav => fav.product._id === product._id);
+        setIsFav(found);
+      })
+      .catch(() => {});
+  }, [user, product._id]);
 
-  const h = hero || {
-    eyebrow: 'NEW COLLECTION · SUMMER 2026',
-    title: 'abyr',
-    subtitle: 'Handcrafted abayas designed for the modern woman. Free delivery over SAR 200.',
-    imageUrl: '',
-    ctaText: 'SHOP NOW',
-    ctaLink: '/category/all',
+  const toggleFavourite = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    setFavLoading(true);
+    try {
+      if (isFav) {
+        await api.delete(`/favourites/${product._id}`);
+        setIsFav(false);
+        addToast("Removed from favourites");
+      } else {
+        await api.post("/favourites", { productId: product._id });
+        setIsFav(true);
+        addToast("Added to favourites", "success");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFavLoading(false);
+    }
   };
 
+  const handleAddToCart = (e) => {
+    e.preventDefault();
+    addToCart(product, 1);
+    addToast("Added to cart", "success");
+  };
+
+  // How much is off, worked out from the two prices the admin already stores.
+  const discountPct =
+    product.salePrice && product.price > 0
+      ? Math.round((1 - product.salePrice / product.price) * 100)
+      : 0;
+
+  // Status badge: stock and price take priority over everything else.
+  // Shows the actual saving ("37% OFF") rather than a vague "SALE",
+  // matching the wording used on the offer cards.
+  const badge =
+    product.stock === 0
+      ? "SOLD OUT"
+      : discountPct > 0
+      ? `${discountPct}% OFF`
+      : product.salePrice
+      ? "SALE"
+      : null;
+
+  // Tag badge: the Best Seller / Selling Fast flag set in the admin.
+  // Shown alongside the status badge so a discounted best seller gets both.
+  const TAGS = {
+    bestSeller: { label: "BEST SELLER", bg: C.gold, fg: C.ink },
+    sellingFast: { label: "SELLING FAST", bg: C.amber, fg: C.cream },
+  };
+  const tag = product.tag && product.tag !== "none" ? TAGS[product.tag] : null;
+
   return (
-    <Layout>
-      <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        {/* Hero */}
-        <div
-          style={{
-            position: 'relative',
-            minHeight: '420px',
-            background: C.brandRed,
-            display: 'flex',
-            alignItems: 'flex-end',
-            padding: '40px 64px 60px 32px',
-            color: C.cream,
-            overflow: 'hidden',
-          }}
-        >
-          {h.imageUrl && (
-            <img
-              src={h.imageUrl}
-              alt="Hero"
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                objectPosition: 'right',
-                opacity: 0.9,
-              }}
-            />
-          )}
+    <>
+      <div
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{ position: "relative" }}
+      >
+        <Link to={`/product/${product._id}`} style={{ textDecoration: "none", color: C.ink }}>
+          {/* Image container */}
           <div
+            onMouseEnter={() => setCurrentImage(hoverImage)}
+            onMouseLeave={() => setCurrentImage(product.imageUrl)}
             style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(135deg, rgba(92,10,20,0.7), rgba(92,10,20,0.3))',
+              background: "transparent",
+              height: 300,
+              width: "100%",                       // explicitly full width
+              overflow: "hidden",                  // clip any overflow
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
-          />
-          <div style={{ position: 'relative', zIndex: 1, maxWidth: 600 }}>
-            <div style={{ ...F(10, 300, C.gold), letterSpacing: 4, marginBottom: 16 }}>
-              {h.eyebrow}
-            </div>
-            <div style={{ ...Ser(48, 300, C.cream) }}>{h.title}</div>
-            <div style={{ ...F(12, 300, 'rgba(255,255,255,0.8)'), lineHeight: 1.9, margin: '12px 0 32px' }}>
-              {h.subtitle}
-            </div>
-            <Link
-              to={h.ctaLink || '/category/all'}
-              style={{
-                ...F(11, 500, C.ink),
-                background: C.gold,
-                padding: '13px 28px',
-                display: 'inline-block',
-                cursor: 'pointer',
-                textDecoration: 'none',
-              }}
-            >
-              {h.ctaText}
-            </Link>
-          </div>
-        </div>
-
-        <CategoryNav />
-
-        {/* Offers — split card: portrait photo on the left, brand-red panel on the
-            right. Same idea as the hero, kept compact rather than full width.
-            Sizes to adjust: 190px = photo width, 260px = card height. */}
-        {offers && offers.length > 0 && (
-          <div style={{ padding: '20px 64px' }}>
-            <h2 style={{ ...Ser(28, 300, C.ink), marginBottom: 16 }}>Offers</h2>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 500px))',
-                gap: 18,
-              }}
-            >
-              {offers.map((offer) => (
-                <Link
-                  key={offer._id}
-                  to={offer.link || '#'}
-                  style={{
-                    display: 'flex',
-                    minHeight: 260,
-                    borderRadius: 0,
-                    overflow: 'hidden',
-                    background: C.ink,
-                    boxShadow: '0 2px 14px rgba(0,0,0,0.08)',
-                    textDecoration: 'none',
-                    transition: 'transform 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-3px)';
-                    const img = e.currentTarget.querySelector('img');
-                    if (img) img.style.transform = 'scale(1.04)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    const img = e.currentTarget.querySelector('img');
-                    if (img) img.style.transform = 'scale(1)';
-                  }}
-                >
-                  {/* Photo side */}
-                  <div style={{ flex: '0 0 230px', position: 'relative', background: C.cream, overflow: 'hidden' }}>
-                    {offer.imageUrl ? (
-                      <img
-                        src={offer.imageUrl}
-                        alt={offer.title}
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          objectPosition: 'top center',   // keeps heads in frame
-                          display: 'block',
-                          transition: 'transform 0.6s ease',
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          ...F(10, 400, '#999'),
-                          textAlign: 'center',
-                          padding: 8,
-                        }}
-                      >
-                        {offer.title}
-                      </div>
-                    )}
-
-                    {/* Soft fade so the photo melts into the panel
-                        rather than stopping at a hard vertical edge. */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background:
-                          'linear-gradient(to right,' +
-                          ' rgba(26,26,26,0) 0%,' +
-                          ' rgba(26,26,26,0.015) 18%,' +
-                          ' rgba(26,26,26,0.05) 30%,' +
-                          ' rgba(26,26,26,0.10) 40%,' +
-                          ' rgba(26,26,26,0.18) 49%,' +
-                          ' rgba(26,26,26,0.28) 57%,' +
-                          ' rgba(26,26,26,0.40) 64%,' +
-                          ' rgba(26,26,26,0.53) 71%,' +
-                          ' rgba(26,26,26,0.66) 78%,' +
-                          ' rgba(26,26,26,0.78) 84%,' +
-                          ' rgba(26,26,26,0.88) 89%,' +
-                          ' rgba(26,26,26,0.95) 94%,' +
-                          ' rgba(26,26,26,1) 100%)',
-                        pointerEvents: 'none',
-                      }}
-                    />
-                  </div>
-
-                  {/* Text panel side */}
-                  <div
-                    style={{
-                      flex: 1,
-                      padding: '24px 26px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',   // badge top, title middle, CTA bottom
-                    }}
-                  >
-                    {offer.badgeText && (
-                      <span
-                        style={{
-                          background: C.gold,
-                          color: C.ink,
-                          ...F(9, 500),
-                          letterSpacing: 1.2,
-                          padding: '5px 11px',
-                          borderRadius: 0,
-                          alignSelf: 'flex-start',
-                        }}
-                      >
-                        {offer.badgeText}
-                      </span>
-                    )}
-
-                    <div>
-                      <div style={{ ...Ser(30, 300, C.cream), lineHeight: 1.1 }}>{offer.title}</div>
-                      {offer.subtitle && (
-                        <div style={{ ...F(11, 400, 'rgba(255,255,255,0.72)'), lineHeight: 1.6, marginTop: 8 }}>
-                          {offer.subtitle}
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      style={{
-                        ...F(9, 500, C.gold),
-                        letterSpacing: 1.6,
-                        textTransform: 'uppercase',
-                        borderTop: '1px solid rgba(196,168,130,0.28)',
-                        paddingTop: 12,
-                      }}
-                    >
-                      Shop now →
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Categories section – NARROW DESIGN like mobile app cards */}
-        {categories && categories.length > 0 && (
-          <div style={{ padding: '20px 64px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ ...Ser(28, 300, C.ink) }}>Shop by Category</h2>
-              <Link
-                to="/category/all"
-                style={{ ...F(10, 400, C.tan), textDecoration: 'none', letterSpacing: 1 }}
+          >
+            {currentImage ? (
+              <img
+                src={currentImage}
+                alt={product.name}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",             // fill the area without stretching
+                }}
+              />
+            ) : (
+              <svg
+                width="36"
+                height="80"
+                viewBox="0 0 80 180"
+                fill="none"
+                stroke="rgba(0,0,0,0.09)"
+                strokeWidth="1.5"
               >
-                View All →
-              </Link>
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                gap: 12,
-                overflowX: 'auto',
-                paddingBottom: 8,
-                scrollSnapType: 'x mandatory',
-                WebkitOverflowScrolling: 'touch',
-              }}
-            >
-              {categories.map((col) => (
-                <Link
-                  key={col._id}
-                  to={`/category/${col.slug}`}
-                  style={{
-                    flex: '0 0 200px',   // same width as the offer cards
-                    textDecoration: 'none',
-                    color: C.ink,
-                    scrollSnapAlign: 'start',
-                  }}
-                >
+                <path d="M40 10 C24 10 16 24 16 36 L8 44 L0 44 L0 160 L80 160 L80 44 L72 44 L64 36 C64 24 56 10 40 10Z" />
+              </svg>
+            )}
+
+            {/* Badges — stacked top-left so they never collide with the heart */}
+            {(badge || tag) && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  left: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 5,
+                  zIndex: 2,
+                }}
+              >
+                {badge && (
                   <div
                     style={{
-                      position: 'relative',
-                      aspectRatio: '3/4',
-                      overflow: 'hidden',
-                      background: C.cream,
-                      boxShadow: '0 2px 14px rgba(0,0,0,0.08)',
-                    }}
-                    onMouseEnter={(e) => {
-                      const img = e.currentTarget.querySelector('img');
-                      if (img) img.style.transform = 'scale(1.06)';
-                    }}
-                    onMouseLeave={(e) => {
-                      const img = e.currentTarget.querySelector('img');
-                      if (img) img.style.transform = 'scale(1)';
+                      background: badge === "SOLD OUT" ? C.ink : C.brandRed,
+                      padding: "4px 10px",
+                      ...F(8, 500, C.cream),
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
                     }}
                   >
-                    {col.imageUrl ? (
-                      <img
-                        src={col.imageUrl}
-                        alt={col.name}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          objectPosition: 'top center',
-                          display: 'block',
-                          transition: 'transform 0.7s ease',
-                        }}
-                      />
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', background: C.cream }} />
-                    )}
-
-                    {/* Scrim: transparent over the garment, deepening at the foot
-                        of the card so the name stays legible on any photo. */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background:
-                          'linear-gradient(to top,' +
-                          ' rgba(16,10,11,0.88) 0%,' +
-                          ' rgba(16,10,11,0.72) 10%,' +
-                          ' rgba(16,10,11,0.50) 20%,' +
-                          ' rgba(16,10,11,0.30) 30%,' +
-                          ' rgba(16,10,11,0.15) 40%,' +
-                          ' rgba(16,10,11,0.05) 50%,' +
-                          ' rgba(16,10,11,0) 62%)',
-                        pointerEvents: 'none',
-                      }}
-                    />
-
-                    {/* Name, set into the photo */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                        bottom: 18,
-                        textAlign: 'center',
-                        padding: '0 12px',
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      <div style={{ ...Ser(19, 400, C.cream), lineHeight: 1.2 }}>{col.name}</div>
-                      <div
-                        style={{
-                          width: 26,
-                          height: 1,
-                          background: C.gold,
-                          margin: '8px auto 0',
-                          opacity: 0.85,
-                        }}
-                      />
-                    </div>
+                    {badge}
                   </div>
-                </Link>
-              ))}
-            </div>
+                )}
+
+                {tag && (
+                  <div
+                    style={{
+                      background: tag.bg,
+                      padding: "4px 10px",
+                      ...F(8, 500, tag.fg),
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {tag.label}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Favourite heart */}
+            {user && (
+              <button
+                onClick={toggleFavourite}
+                disabled={favLoading}
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  background: "rgba(0,0,0,0.3)",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: 32,
+                  height: 32,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  zIndex: 2,
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill={isFav ? C.brandRed : "none"}
+                  stroke="white"
+                  strokeWidth="2"
+                >
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+              </button>
+            )}
           </div>
-        )}
 
-        {/* Products grid */}
-        <div style={{ padding: '40px 64px' }}>
-          <h2 style={{ ...Ser(32, 300, C.ink), marginBottom: 28 }}>New Arrivals</h2>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 40, ...F(14, 400, '#888') }}>Loading...</div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px,1fr))', gap: 20 }}>
-              {products.map((product) => (
-                <ProductCard key={product._id} product={product} />
-              ))}
+          {/* Product info */}
+          <div style={{ padding: "8px 0px 12px" }}>
+            <div style={{ ...F(8, 500, C.tan), letterSpacing: 1, textTransform: "uppercase" }}>
+              {product.category}
             </div>
-          )}
-        </div>
+            <div style={{ ...F(11, 500, C.ink), marginBottom: 2 }}>
+              {product.name}
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+              {product.salePrice ? (
+                <>
+                  <span style={{ ...Ser(13, 300, C.tan) }}>
+                    SAR {parseFloat(product.salePrice).toFixed(2)}
+                  </span>
+                  <span style={{ ...F(11, 400, "#888"), textDecoration: "line-through" }}>
+                    SAR {parseFloat(product.price).toFixed(2)}
+                  </span>
+                </>
+              ) : (
+                <span style={{ ...Ser(13, 300, C.tan) }}>
+                  SAR {parseFloat(product.price).toFixed(2)}
+                </span>
+              )}
+            </div>
 
-        <RecentlyViewed />
-        <TestimonialsSection />
-        <NewsletterSection />
+            {/* Quick View button */}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                setShowQuickView(true);
+              }}
+              style={{
+                width: "100%",
+                padding: "6px 0",
+                background: "transparent",
+                color: C.tan,
+                border: `0.5px solid ${C.border}`,
+                ...F(10, 400, C.tan),
+                letterSpacing: 1,
+                cursor: "pointer",
+                marginBottom: 6,
+              }}
+            >
+              Quick View
+            </button>
+
+            {/* Add to Cart button */}
+            <button
+              onClick={handleAddToCart}
+              style={{
+                width: "100%",
+                padding: "8px 0",
+                background: C.brandRed,
+                color: C.cream,
+                border: "none",
+                ...F(11, 500, C.cream),
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                cursor: "pointer",
+              }}
+            >
+              Add to Cart
+            </button>
+          </div>
+        </Link>
       </div>
-    </Layout>
+
+      {showQuickView && (
+        <QuickViewModal product={product} onClose={() => setShowQuickView(false)} />
+      )}
+    </>
   );
 }

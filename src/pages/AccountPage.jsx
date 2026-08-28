@@ -4,12 +4,14 @@ import api from "../api";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
+import { useIsMobile } from "../responsive";
 import AddressesPage from "./AddressesPage";
 import FavouritesPage from "./FavouritesPage";
 import OrdersPage from "./OrdersPage";
 import SettingsPage from "./SettingsPage";
 
 export default function AccountPage() {
+  const isMobile = useIsMobile();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("account");
@@ -53,7 +55,7 @@ export default function AccountPage() {
   return (
     <Layout>
       <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "28px 64px", display: "grid", gridTemplateColumns: "220px 1fr", gap: 48 }}>
+        <div style={{ padding: "28px clamp(16px, 5vw, 64px)", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "220px 1fr", gap: "clamp(24px, 4vw, 48px)" }}>
           {/* Sidebar */}
           <div style={{ borderRight: `0.5px solid ${C.border}`, paddingRight: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, paddingBottom: 20, borderBottom: `0.5px solid ${C.border}` }}>

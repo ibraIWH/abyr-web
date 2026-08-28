@@ -3,8 +3,10 @@ import EmptyState from "../components/EmptyState";
 import Layout from "../components/Layout";
 import { useCart } from "../context/CartContext";
 import { C, Cap, F, Ser } from "../designTokens";
+import { useIsMobile } from "../responsive";
 
 export default function CartPage() {
+  const isMobile = useIsMobile();
   const { cart, updateQuantity, removeFromCart } = useCart();
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -22,12 +24,12 @@ export default function CartPage() {
   return (
     <Layout>
       <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, padding: "28px 64px", display: "grid", gridTemplateColumns: "1fr 340px", gap: 48, alignItems: "start" }}>
+        <div style={{ flex: 1, padding: "28px clamp(16px, 5vw, 64px)", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 340px", gap: "clamp(24px, 4vw, 48px)", alignItems: "start" }}>
           <div>
             <h1 style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Shopping Bag ({cart.length})</h1>
             {cart.map((item) => (
               <div key={item._id} style={{ display: "flex", gap: 18, paddingBottom: 20, marginBottom: 20, borderBottom: `0.5px solid ${C.border}` }}>
-                <div style={{ width: 90, height: 110, background: "#EDE8E0", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: "clamp(72px, 22vw, 90px)", height: "clamp(88px, 27vw, 110px)", background: "#EDE8E0", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.name} style={{ maxHeight: "100%", maxWidth: "100%" }} />
                   ) : (

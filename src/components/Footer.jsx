@@ -2,7 +2,7 @@ import { C, F, Ser } from "../designTokens";
 
 export default function Footer() {
   return (
-    <div style={{ background: C.ink, padding: "48px 64px 28px", color: C.cream }}>
+    <div style={{ background: C.ink, padding: "clamp(36px, 6vw, 48px) clamp(16px, 5vw, 64px) 28px", color: C.cream }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px,1fr))", gap: 32, marginBottom: 40 }}>
         {/* Brand */}
         <div>

@@ -12,7 +12,7 @@ export default function NewsletterSection() {
 
   if (submitted) {
     return (
-      <div style={{ background: C.cream, padding: "48px 64px", textAlign: "center" }}>
+      <div style={{ background: C.cream, padding: "clamp(36px, 6vw, 48px) clamp(16px, 5vw, 64px)", textAlign: "center" }}>
         <h2 style={Ser(28, 300, C.ink)}>Thank You</h2>
         <p style={F(13, 400, "#888")}>You're on the list. We'll keep you posted.</p>
       </div>
@@ -20,7 +20,7 @@ export default function NewsletterSection() {
   }
 
   return (
-    <div style={{ background: C.brandRed, padding: "48px 64px", textAlign: "center" }}>
+    <div style={{ background: C.brandRed, padding: "clamp(36px, 6vw, 48px) clamp(16px, 5vw, 64px)", textAlign: "center" }}>
       <h2 style={Ser(28, 300, C.cream)}>Join the Abyr List</h2>
       <p style={{ ...F(13, 400, C.cream), opacity: 0.8, marginBottom: 24 }}>
         Be the first to know about new collections and exclusive offers.

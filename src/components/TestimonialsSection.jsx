@@ -8,10 +8,10 @@ const reviews = [
 
 export default function TestimonialsSection() {
   return (
-    <div style={{ background: C.linen, padding: "52px 64px", textAlign: "center" }}>
+    <div style={{ background: C.linen, padding: "clamp(36px, 6vw, 52px) clamp(16px, 5vw, 64px)", textAlign: "center" }}>
       <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>Reviews</div>
       <h2 style={{ ...Ser(30, 300, C.ink), marginBottom: 36 }}>What Our Customers Say</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px,1fr))", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))", gap: 20 }}>
         {reviews.map((review, i) => (
           <div key={i} style={{ background: C.white, padding: "28px 24px", textAlign: "left", border: `0.5px solid ${C.border}` }}>
             <div style={{ display: "flex", gap: 3, marginBottom: 14 }}>

@@ -98,7 +98,7 @@ export default function CheckoutPage() {
 
   return (
     <Layout>
-      <div style={{ flex: 1, maxWidth: 1100, margin: "2rem auto", padding: "0 1rem", width: "100%" }}>
+      <div style={{ flex: 1, maxWidth: 1100, margin: "2rem auto", padding: "0 clamp(16px, 4vw, 24px)", width: "100%" }}>
         <h1 style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Checkout</h1>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "2rem" }}>
           <form onSubmit={handleSubmit} style={{ flex: 2, minWidth: 280 }}>

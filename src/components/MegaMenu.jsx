@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useSettings } from "../context/SettingsContext";
 import { C, F, Ser } from "../designTokens";
+import { PAGE_X } from "../responsive";
 
 const toSlug = (name = "") =>
   name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -18,9 +19,9 @@ export default function MegaMenu({ open, onClose }) {
         position: "absolute", top: "100%", left: 0, right: 0,
         background: C.white, borderBottom: `0.5px solid ${C.border}`,
         boxShadow: "0 12px 30px rgba(0,0,0,0.08)", zIndex: 999,
-        padding: "28px 64px 32px",
+        padding: `28px ${PAGE_X} 32px`,
       }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", gap: 64, alignItems: "flex-start" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexWrap: "wrap", gap: 'clamp(24px, 5vw, 64px)', alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
             <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 18 }}>Categories</div>
 
