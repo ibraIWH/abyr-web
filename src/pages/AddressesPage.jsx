@@ -1,61 +1,105 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import api from '../api';
 import Layout from '../components/Layout';
 import { C, F, Ser } from '../designTokens';
 
+const EMPTY = { name: '', line1: '', city: '', phone: '' };
+
 export default function AddressesPage({ standalone = true }) {
-  const [addresses, setAddresses] = useState(
-    JSON.parse(localStorage.getItem('savedAddresses') || '[]')
-  );
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [addresses, setAddresses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', line1: '', city: '', phone: '' });
+  const [form, setForm] = useState(EMPTY);
 
-  const saveToStorage = (newAddresses) => {
-    localStorage.setItem('savedAddresses', JSON.stringify(newAddresses));
-    setAddresses(newAddresses);
-  };
+  // Load from the server, and move anything still sitting in this browser's
+  // localStorage up to the account once — then clear it, so the server is the
+  // only source of truth from here on.
+  useEffect(() => {
+    let alive = true;
 
-  const handleAdd = () => {
-    if (!form.name || !form.line1 || !form.city) return;
-    const newAddresses = [...addresses, form];
-    saveToStorage(newAddresses);
-    setForm({ name: '', line1: '', city: '', phone: '' });
-    setShowForm(false);
-  };
+    const load = async () => {
+      try {
+        const res = await api.get('/addresses');
+        let list = res.data || [];
 
-  const handleEdit = (index) => {
-    setEditingIndex(index);
-    setForm(addresses[index]);
+        const legacy = JSON.parse(localStorage.getItem('savedAddresses') || '[]');
+        if (legacy.length > 0) {
+          for (const a of legacy) {
+            if (!a.name || !a.line1 || !a.city) continue;
+            const saved = await api.post('/addresses', a);
+            list = saved.data;
+          }
+          localStorage.removeItem('savedAddresses');
+        }
+
+        if (alive) setAddresses(list);
+      } catch (err) {
+        if (alive) setError(err?.response?.data?.message || 'Could not load your addresses.');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+
+    load();
+    return () => { alive = false; };
+  }, []);
+
+  const openAdd = () => {
+    setForm(EMPTY);
+    setEditingId(null);
+    setError('');
     setShowForm(true);
   };
 
-  const handleUpdate = () => {
-    if (!form.name || !form.line1 || !form.city) return;
-    const newAddresses = [...addresses];
-    newAddresses[editingIndex] = form;
-    saveToStorage(newAddresses);
-    setForm({ name: '', line1: '', city: '', phone: '' });
-    setEditingIndex(null);
-    setShowForm(false);
+  const openEdit = (addr) => {
+    setForm({ name: addr.name, line1: addr.line1, city: addr.city, phone: addr.phone || '' });
+    setEditingId(addr._id);
+    setError('');
+    setShowForm(true);
   };
 
-  const handleDelete = (index) => {
-    if (window.confirm('Delete this address?')) {
-      const newAddresses = addresses.filter((_, i) => i !== index);
-      saveToStorage(newAddresses);
+  const handleSave = async () => {
+    if (!form.name || !form.line1 || !form.city) {
+      setError('Name, address and city are required.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      // Both endpoints return the full updated list, so we just swap it in.
+      const res = editingId
+        ? await api.put(`/addresses/${editingId}`, form)
+        : await api.post('/addresses', form);
+      setAddresses(res.data);
+      setForm(EMPTY);
+      setEditingId(null);
+      setShowForm(false);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Could not save that address.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this address?')) return;
+    try {
+      const res = await api.delete(`/addresses/${id}`);
+      setAddresses(res.data);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Could not delete that address.');
     }
   };
 
   const content = (
-    <div style={{ padding: standalone ? '28px 64px' : '0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    <div style={{ padding: standalone ? '28px clamp(16px, 5vw, 64px)' : '0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
         <div style={{ ...Ser(28, 300, C.ink) }}>Addresses</div>
         <button
-          onClick={() => {
-            setForm({ name: '', line1: '', city: '', phone: '' });
-            setEditingIndex(null);
-            setShowForm(true);
-          }}
+          onClick={openAdd}
           style={{
             border: `0.5px solid ${C.brandRed}`,
             padding: '9px 18px',
@@ -70,12 +114,20 @@ export default function AddressesPage({ standalone = true }) {
         </button>
       </div>
 
-      {addresses.length === 0 ? (
+      {error && !showForm && (
+        <div style={{ background: '#FFEBEE', color: C.red, padding: '10px 14px', marginBottom: 16, ...F(11, 400) }}>
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ ...F(13, 400, '#888') }}>Loading…</div>
+      ) : addresses.length === 0 ? (
         <div style={{ ...F(13, 400, '#888') }}>No addresses saved yet.</div>
       ) : (
-        addresses.map((addr, index) => (
+        addresses.map((addr) => (
           <div
-            key={index}
+            key={addr._id}
             style={{
               border: `0.5px solid ${C.border}`,
               padding: '16px',
@@ -83,22 +135,23 @@ export default function AddressesPage({ standalone = true }) {
               background: C.white,
             }}
           >
-            <div style={{ ...F(12, 500, C.ink), marginBottom: 6 }}>{addr.name}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <div style={{ ...F(12, 500, C.ink) }}>{addr.name}</div>
+              {addr.isDefault && (
+                <span style={{ ...F(8, 500, C.ink), background: C.gold, padding: '3px 8px', letterSpacing: 1, textTransform: 'uppercase' }}>
+                  Default
+                </span>
+              )}
+            </div>
             <div style={{ ...F(11, 400, '#888'), lineHeight: 1.6 }}>
               {addr.line1}, {addr.city}
             </div>
             {addr.phone && <div style={{ ...F(11, 400, '#888') }}>{addr.phone}</div>}
             <div style={{ marginTop: 12, display: 'flex', gap: 16 }}>
-              <span
-                onClick={() => handleEdit(index)}
-                style={{ ...F(10, 400, C.tan), cursor: 'pointer', letterSpacing: 1 }}
-              >
+              <span onClick={() => openEdit(addr)} style={{ ...F(10, 400, C.tan), cursor: 'pointer', letterSpacing: 1 }}>
                 EDIT
               </span>
-              <span
-                onClick={() => handleDelete(index)}
-                style={{ ...F(10, 400, C.red), cursor: 'pointer', letterSpacing: 1 }}
-              >
+              <span onClick={() => handleDelete(addr._id)} style={{ ...F(10, 400, C.red), cursor: 'pointer', letterSpacing: 1 }}>
                 DELETE
               </span>
             </div>
@@ -106,7 +159,7 @@ export default function AddressesPage({ standalone = true }) {
         ))
       )}
 
-      {/* Address Form Modal */}
+      {/* Address form */}
       {showForm && (
         <div
           style={{
@@ -117,6 +170,7 @@ export default function AddressesPage({ standalone = true }) {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
+            padding: 16,
           }}
           onClick={() => setShowForm(false)}
         >
@@ -125,54 +179,43 @@ export default function AddressesPage({ standalone = true }) {
               background: C.white,
               padding: '28px',
               maxWidth: 400,
-              width: '90%',
+              width: '100%',
               border: `0.5px solid ${C.border}`,
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ ...Ser(24, 300, C.ink), marginBottom: 16 }}>
-              {editingIndex !== null ? 'Edit Address' : 'Add Address'}
+              {editingId ? 'Edit Address' : 'Add Address'}
             </div>
-            <input
-              placeholder="Full Name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              style={inputStyle}
-            />
-            <input
-              placeholder="Address Line"
-              value={form.line1}
-              onChange={(e) => setForm({ ...form, line1: e.target.value })}
-              style={inputStyle}
-            />
-            <input
-              placeholder="City"
-              value={form.city}
-              onChange={(e) => setForm({ ...form, city: e.target.value })}
-              style={inputStyle}
-            />
-            <input
-              placeholder="Phone (optional)"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              style={inputStyle}
-            />
+
+            {error && (
+              <div style={{ background: '#FFEBEE', color: C.red, padding: '10px 14px', marginBottom: 12, ...F(11, 400) }}>
+                {error}
+              </div>
+            )}
+
+            <input placeholder="Full Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
+            <input placeholder="Address Line" value={form.line1} onChange={(e) => setForm({ ...form, line1: e.target.value })} style={inputStyle} />
+            <input placeholder="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} style={inputStyle} />
+            <input placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
+
             <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
               <button
-                onClick={editingIndex !== null ? handleUpdate : handleAdd}
+                onClick={handleSave}
+                disabled={saving}
                 style={{
                   flex: 1,
-                  background: C.brandRed,
+                  background: saving ? '#888' : C.brandRed,
                   color: C.cream,
                   border: 'none',
                   padding: '10px 0',
                   ...F(10, 500, C.cream),
                   letterSpacing: 1,
                   textTransform: 'uppercase',
-                  cursor: 'pointer',
+                  cursor: saving ? 'default' : 'pointer',
                 }}
               >
-                {editingIndex !== null ? 'Update' : 'Save'}
+                {saving ? 'Saving…' : editingId ? 'Update' : 'Save'}
               </button>
               <button
                 onClick={() => setShowForm(false)}
