@@ -44,7 +44,7 @@ export default function OrdersPage({ standalone = true }) {
   }
 
   const content = (
-    <div style={{ padding: standalone ? '28px 64px' : '0' }}>
+    <div style={{ padding: standalone ? '28px clamp(16px, 5vw, 64px)' : '0' }}>
       <h1 style={{ ...Ser(32, 300, C.ink), marginBottom: 24 }}>My Orders</h1>
       {orders.map((order) => (
         <div

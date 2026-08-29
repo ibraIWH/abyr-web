@@ -41,7 +41,7 @@ export default function SearchPage() {
   return (
     <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "28px 64px" }}>
+      <div style={{ padding: "28px clamp(16px, 5vw, 64px)" }}>
         {/* Search Input */}
         <form onSubmit={handleSubmit} style={{ display: "flex", marginBottom: 24 }}>
           <input
@@ -92,7 +92,7 @@ export default function SearchPage() {
             No products found. Try a different keyword.
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(240px, 46%), 1fr))", gap: 'clamp(10px, 2.5vw, 20px)' }}>
             {products.map(product => (
               <ProductCard key={product._id} product={product} />
             ))}

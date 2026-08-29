@@ -31,7 +31,7 @@ export default function FavouritesPage({ standalone = true }) {
     return <EmptyState title="No favourites yet" message="Save items you love and they'll appear here." icon="❤️" showShopButton={true} />;
   }
   const content = (
-    <div style={{ padding: standalone ? "28px 64px" : "0" }}>
+    <div style={{ padding: standalone ? "28px clamp(16px, 5vw, 64px)" : "0" }}>
       <h1 style={{ ...Ser(32, 300, C.ink), marginBottom: 28 }}>My Favourites</h1>
       {loading ? (
         <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>Loading...</div>
@@ -40,7 +40,7 @@ export default function FavouritesPage({ standalone = true }) {
           No favourites yet. Tap the heart on any product to add it here.
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(240px, 46%), 1fr))", gap: 'clamp(10px, 2.5vw, 20px)' }}>
           {favourites.map(fav => (
             <ProductCard key={fav._id} product={fav.product} />
           ))}
