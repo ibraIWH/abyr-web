@@ -3,8 +3,10 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
+import { useIsMobile } from "../responsive";
 
 export default function SignInPage() {
+  const isMobile = useIsMobile();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -31,10 +33,10 @@ export default function SignInPage() {
   return (
     <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ flex: 1, display: "flex" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row" }}>
         {/* … same JSX as before, no changes needed ... */}
         {/* Left side */}
-        <div style={{ flex: 1, background: `linear-gradient(135deg, ${C.brandRed}, ${C.brandRed})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ flex: 1, background: `linear-gradient(135deg, ${C.brandRed}, ${C.brandRed})`, display: isMobile ? "none" : "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ ...Ser(64, 300, C.cream) }}>abyr</div>
             <div style={{ ...F(10, 300, C.gold), letterSpacing: 4, marginTop: 8, textTransform: "uppercase" }}>Hargeisa · Online</div>
@@ -42,7 +44,7 @@ export default function SignInPage() {
         </div>
 
         {/* Right side */}
-        <div style={{ width: 460, padding: "48px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <div style={{ width: isMobile ? "100%" : 460, padding: isMobile ? "32px clamp(20px, 6vw, 48px)" : "48px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <div style={{ ...Ser(28, 300, C.ink), marginBottom: 4 }}>Welcome back</div>
           <div style={{ ...F(11, 400, "#888"), marginBottom: 28 }}>Sign in to your Abyr account</div>
           {error && <div style={{ background: "#FFEBEE", color: C.red, padding: "10px 14px", marginBottom: 20, ...F(10, 400) }}>{error}</div>}

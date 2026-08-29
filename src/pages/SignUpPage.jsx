@@ -3,8 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
+import { useIsMobile } from "../responsive";
 
 export default function SignUpPage() {
+  const isMobile = useIsMobile();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -31,14 +33,14 @@ export default function SignUpPage() {
   return (
     <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ flex: 1, display: "flex" }}>
-        <div style={{ flex: 1, background: `linear-gradient(135deg, ${C.brandRed}, ${C.brandRed})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row" }}>
+        <div style={{ flex: 1, background: `linear-gradient(135deg, ${C.brandRed}, ${C.brandRed})`, display: isMobile ? "none" : "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ ...Ser(64, 300, C.cream) }}>abyr</div>
             <div style={{ ...F(10, 300, C.gold), letterSpacing: 4, marginTop: 8, textTransform: "uppercase" }}>Join us</div>
           </div>
         </div>
-        <div style={{ width: 460, padding: "48px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <div style={{ width: isMobile ? "100%" : 460, padding: isMobile ? "32px clamp(20px, 6vw, 48px)" : "48px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <div style={{ ...Ser(28, 300, C.ink), marginBottom: 4 }}>Create Account</div>
           <div style={{ ...F(11, 400, "#888"), marginBottom: 28 }}>Join Abyr Line for exclusive access</div>
           {error && <div style={{ background: "#FFEBEE", color: C.red, padding: "10px 14px", marginBottom: 20, ...F(10, 400) }}>{error}</div>}

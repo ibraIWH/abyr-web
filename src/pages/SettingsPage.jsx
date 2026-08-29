@@ -12,7 +12,7 @@ export default function SettingsPage({ standalone = true }) {
   };
 
   const content = (
-    <div style={{ padding: standalone ? "28px 64px" : "0" }}>
+    <div style={{ padding: standalone ? "28px clamp(16px, 5vw, 64px)" : "0" }}>
       <div style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Settings</div>
       <div style={{ marginBottom: 28 }}>
         <div style={{ ...F(11, 400, "#888"), marginBottom: 8 }}>Account security</div>
