@@ -32,7 +32,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
   return (
     <div style={{ padding: `${isMobile ? '12px' : '20px'} 0`, width: '100%' }}>
       <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between' }}>
-        {/* Line — centered vertically in the dot row, behind the dots */}
+        {/* Line — Entirely black now */}
         <div
           style={{
             position: 'absolute',
@@ -40,7 +40,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
             left: '4%',
             right: '4%',
             height: 2,
-            background: C.border,
+            background: 'black', // Changed from C.border
             zIndex: 0,
           }}
         >
@@ -48,7 +48,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
             style={{
               width: `${progress}%`,
               height: '100%',
-              background: C.brandRed,
+              background: 'black', // Changed from C.brandRed
               transition: 'width 0.6s ease',
             }}
           />
@@ -72,7 +72,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                 justifyContent: 'flex-start',
               }}
             >
-              {/* Dot — MATCHED TO REFERENCE IMAGE */}
+              {/* Dot — White center, black border */}
               <div
                 style={{
                   height: dotRowHeight,
@@ -87,8 +87,8 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                     width: dotSize,
                     height: dotSize,
                     borderRadius: '50%',
-                    background: 'black', /* Changed: Cuts out the line inside */
-                    border: `2px solid white`, /* Changed: The white ring */
+                    background: 'white', // Changed to white center
+                    border: `2px solid black`, // Changed to black border
                     boxShadow: isCurrent
                       ? `0 0 0 ${isMobile ? '3px' : '5px'} rgba(196,168,130,0.2)`
                       : 'none',
