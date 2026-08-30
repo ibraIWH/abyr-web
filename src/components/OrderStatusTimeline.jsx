@@ -17,131 +17,120 @@ export default function OrderStatusTimeline({ status, createdAt }) {
     year: 'numeric',
   });
 
-  const dotSize = isMobile ? 14 : 20;
-  const currentDotSize = isMobile ? 22 : 30;
+  // ALL dots are the SAME size (no size difference)
+  const dotSize = isMobile ? 16 : 22;
   const labelSize = isMobile ? 8 : 10;
   const dateSize = isMobile ? 7 : 9;
   const tagSize = isMobile ? 6 : 7;
   const tagPadding = isMobile ? '1px 6px' : '2px 10px';
   const progress = (currentIndex / (STATUS_STEPS.length - 1)) * 100;
 
-  // Grid styles: 4 columns, 3 rows
-  const gridContainerStyle = {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr 1fr 1fr',
-    gridTemplateRows: isMobile ? '30px 24px 40px' : '40px 32px 50px',
-    position: 'relative',
-    padding: '0 4%',
-  };
-
-  // Line overlay (absolute positioned across the grid)
-  const lineStyle = {
-    position: 'absolute',
-    top: isMobile ? 15 : 20,
-    left: '8%',
-    right: '8%',
-    height: 2,
-    background: C.border,
-    zIndex: 0,
-  };
-
-  const progressStyle = {
-    width: `${progress}%`,
-    height: '100%',
-    background: C.brandRed,
-    transition: 'width 0.6s ease',
-  };
-
-  // Helper to get dot for a step
-  const getDot = (index) => {
-    const isActive = index <= currentIndex;
-    const isCurrent = index === currentIndex;
-    const size = isCurrent ? currentDotSize : dotSize;
-    return (
-      <div
-        style={{
-          width: size,
-          height: size,
-          borderRadius: '50%',
-          background: isActive ? C.brandRed : C.border,
-          border: isCurrent ? `2px solid ${C.gold}` : 'none',
-          boxShadow: isCurrent
-            ? `0 0 0 ${isMobile ? '3px' : '5px'} rgba(196,168,130,0.2)`
-            : 'none',
-          transition: 'all 0.3s ease',
-          flexShrink: 0,
-        }}
-      />
-    );
-  };
+  // Fixed step height
+  const STEP_HEIGHT = isMobile ? 90 : 120;
 
   return (
     <div style={{ padding: `${isMobile ? '12px' : '20px'} 0`, width: '100%' }}>
-      <div style={{ position: 'relative' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          position: 'relative',
+        }}
+      >
         {/* Line */}
-        <div style={lineStyle}>
-          <div style={progressStyle} />
+        <div
+          style={{
+            position: 'absolute',
+            top: isMobile ? 16 : 22,
+            left: '4%',
+            right: '4%',
+            height: 2,
+            background: C.border,
+            zIndex: 0,
+          }}
+        >
+          <div
+            style={{
+              width: `${progress}%`,
+              height: '100%',
+              background: C.brandRed,
+              transition: 'width 0.6s ease',
+            }}
+          />
         </div>
 
-        {/* Grid */}
-        <div style={gridContainerStyle}>
-          {/* Row 1: Dots */}
-          {STATUS_STEPS.map((step, index) => (
+        {STATUS_STEPS.map((step, index) => {
+          const isCurrent = index === currentIndex;
+
+          return (
             <div
-              key={`dot-${step.key}`}
+              key={step.key}
               style={{
                 display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
-                gridRow: 1,
-                gridColumn: index + 1,
+                width: '25%',
+                position: 'relative',
                 zIndex: 1,
+                height: STEP_HEIGHT,
+                justifyContent: 'flex-start',
               }}
             >
-              {getDot(index)}
-            </div>
-          ))}
-
-          {/* Row 2: Labels */}
-          {STATUS_STEPS.map((step, index) => {
-            const isActive = index <= currentIndex;
-            return (
+              {/* Dot — empty (outline) for all, filled ONLY for current */}
               <div
-                key={`label-${step.key}`}
                 style={{
-                  gridRow: 2,
-                  gridColumn: index + 1,
-                  ...F(labelSize, isActive ? 500 : 400, isActive ? C.ink : '#999'),
+                  height: isMobile ? 30 : 40,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                }}
+              >
+                <div
+                  style={{
+                    width: dotSize,
+                    height: dotSize,
+                    borderRadius: '50%',
+                    background: isCurrent ? C.brandRed : 'transparent',
+                    border: `2px solid ${isCurrent ? C.brandRed : C.border}`,
+                    boxShadow: isCurrent
+                      ? `0 0 0 ${isMobile ? '3px' : '5px'} rgba(196,168,130,0.2)`
+                      : 'none',
+                    transition: 'all 0.3s ease',
+                    flexShrink: 0,
+                  }}
+                />
+              </div>
+
+              {/* Label */}
+              <div
+                style={{
+                  ...F(labelSize, isCurrent ? 500 : 400, isCurrent ? C.ink : '#999'),
                   textAlign: 'center',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   padding: '0 2px',
+                  lineHeight: 1.3,
+                  height: isMobile ? 20 : 28,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  zIndex: 1,
+                  width: '100%',
                 }}
               >
                 {step.label}
               </div>
-            );
-          })}
 
-          {/* Row 3: Extra content (date + tag for current, empty for others) */}
-          {STATUS_STEPS.map((step, index) => {
-            const isCurrent = index === currentIndex;
-            return (
+              {/* Extra content (date + tag) — only for current */}
               <div
-                key={`extra-${step.key}`}
                 style={{
-                  gridRow: 3,
-                  gridColumn: index + 1,
+                  height: isMobile ? 36 : 48,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  zIndex: 1,
+                  width: '100%',
                   gap: isMobile ? 1 : 2,
                 }}
               >
@@ -170,11 +159,14 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                       Current
                     </div>
                   </>
-                ) : null}
+                ) : (
+                  /* Empty spacer to keep height consistent */
+                  <div style={{ height: isMobile ? 32 : 44 }} />
+                )}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
