@@ -4,8 +4,10 @@ import api from '../api';
 import Layout from '../components/Layout';
 import OrderStatusTimeline from '../components/OrderStatusTimeline';
 import { C, F, Ser } from '../designTokens';
+import { PAGE_X, useIsMobile } from '../responsive';
 
 export default function TrackingPage() {
+  const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   const orderNumber = searchParams.get('order') || 'ABR-00000000';
   const [order, setOrder] = useState(null);
@@ -45,19 +47,35 @@ export default function TrackingPage() {
   return (
     <Layout>
       <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, padding: '32px 64px' }}>
-          <div onClick={() => window.history.back()} style={{ ...F(10, 400, '#888'), cursor: 'pointer', marginBottom: 18 }}>
+        <div style={{ flex: 1, padding: `clamp(24px, 4vw, 32px) ${PAGE_X}` }}>
+          {/* Back button */}
+          <div
+            onClick={() => window.history.back()}
+            style={{ ...F(10, 400, '#888'), cursor: 'pointer', marginBottom: isMobile ? 12 : 18 }}
+          >
             ← Back to My Orders
           </div>
-          <div style={{ ...Ser(28, 300, C.ink), marginBottom: 4 }}>Order {order.orderNumber}</div>
-          <div style={{ ...F(11, 400, '#888'), marginBottom: 32 }}>
+
+          {/* Order number and date */}
+          <div style={{ ...Ser(28, 300, C.ink), fontSize: isMobile ? 22 : 28, marginBottom: 4 }}>
+            Order {order.orderNumber}
+          </div>
+          <div style={{ ...F(11, 400, '#888'), marginBottom: isMobile ? 20 : 32 }}>
             Placed {new Date(order.createdAt).toLocaleDateString()}
           </div>
 
           {/* Timeline */}
           <OrderStatusTimeline status={order.status} createdAt={order.createdAt} />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, marginTop: 32 }}>
+          {/* Grid: Summary + Address */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              gap: isMobile ? 24 : 48,
+              marginTop: isMobile ? 20 : 32,
+            }}
+          >
             {/* Order Summary */}
             <div>
               <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: 'uppercase', marginBottom: 20 }}>
