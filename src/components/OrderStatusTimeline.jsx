@@ -33,7 +33,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
     <div style={{ padding: `${isMobile ? '12px' : '20px'} 0`, width: '100%' }}>
       <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between' }}>
         
-        {/* Line — Now Black */}
+        {/* Line — Black */}
         <div
           style={{
             position: 'absolute',
@@ -73,7 +73,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                 justifyContent: 'flex-start',
               }}
             >
-              {/* Dot — White Hole Center, Black Border */}
+              {/* Dot — White hole for past/future, Filled black for current */}
               <div
                 style={{
                   height: dotRowHeight,
@@ -88,8 +88,9 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                     width: dotSize,
                     height: dotSize,
                     borderRadius: '50%',
-                    background: 'white', /* IMPORTANT: The page background color, creating the HOLE */
-                    border: `2px solid black`, /* The visible ring */
+                    /* KEY CHANGE: Filled black for current, White hole for others */
+                    background: isCurrent ? 'black' : 'white', 
+                    border: `2px solid black`,
                     boxShadow: isCurrent
                       ? `0 0 0 ${isMobile ? '3px' : '5px'} rgba(196,168,130,0.2)`
                       : 'none',
