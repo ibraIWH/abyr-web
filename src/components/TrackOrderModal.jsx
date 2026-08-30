@@ -1,21 +1,37 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../api';
+import { useAuth } from '../context/AuthContext';
 import { C, F, Ser } from '../designTokens';
 
-export default function TrackOrderModal({ onClose }) {
-  const [orderNumber, setOrderNumber] = useState('');
-  const [error, setError] = useState('');
-  const navigate = useNavigate();
+const STATUS_META = {
+  placed:    { label: 'Placed',    fg: '#5B5048', bg: '#EFEAE2' },
+  confirmed: { label: 'Confirmed', fg: '#5C0A14', bg: '#F4E3E5' },
+  shipped:   { label: 'Shipped',   fg: '#8A3A00', bg: '#FBE7D8' },
+  delivered: { label: 'Delivered', fg: '#1B5E20', bg: '#E3F0E4' },
+  cancelled: { label: 'Cancelled', fg: '#C62828', bg: '#FBE3E3' },
+};
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const trimmed = orderNumber.trim();
-    if (!trimmed) {
-      setError('Please enter your order number');
+export default function TrackOrderModal({ onClose }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
       return;
     }
+    api.get('/orders')
+      .then((res) => setOrders(res.data || []))
+      .catch(() => setOrders([]))
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  const handleOrderClick = (orderNumber) => {
     onClose();
-    navigate(`/tracking?order=${trimmed}`);
+    navigate(`/tracking?order=${orderNumber}`);
   };
 
   return (
@@ -36,15 +52,19 @@ export default function TrackOrderModal({ onClose }) {
       <div
         style={{
           background: C.white,
-          maxWidth: 420,
+          maxWidth: 480,
           width: '100%',
-          padding: '32px 28px',
+          maxHeight: '80vh',
+          padding: '28px 24px',
           borderRadius: 12,
           boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
           position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close button */}
         <button
           onClick={onClose}
           style={{
@@ -61,62 +81,114 @@ export default function TrackOrderModal({ onClose }) {
           ×
         </button>
 
-        <div style={{ ...Ser(28, 300, C.ink), marginBottom: 8 }}>Track Order</div>
-        <div style={{ ...F(11, 400, '#888'), marginBottom: 24 }}>
-          Enter your order number to check delivery status.
+        <div style={{ ...Ser(28, 300, C.ink), marginBottom: 4 }}>My Orders</div>
+        <div style={{ ...F(11, 400, '#888'), marginBottom: 20 }}>
+          {user ? 'Click any order to track it.' : 'Sign in to see your orders.'}
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            value={orderNumber}
-            onChange={(e) => {
-              setOrderNumber(e.target.value);
-              setError('');
-            }}
-            placeholder="e.g. ABR-123456789"
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: `1px solid ${error ? C.red : C.border}`,
-              borderRadius: 8,
-              ...F(14, 400, C.ink),
-              outline: 'none',
-              marginBottom: error ? 8 : 16,
-              transition: 'border-color 0.15s',
-            }}
-            onFocus={(e) => (e.target.style.borderColor = C.gold)}
-            onBlur={(e) => (e.target.style.borderColor = error ? C.red : C.border)}
-          />
-
-          {error && (
-            <div style={{ ...F(11, 400, C.red), marginBottom: 16 }}>
-              {error}
+        {!user ? (
+          <div style={{ textAlign: 'center', padding: 20 }}>
+            <div style={{ ...F(13, 400, '#888'), marginBottom: 16 }}>
+              Please sign in to view your orders.
             </div>
-          )}
-
-          <button
-            type="submit"
-            style={{
-              width: '100%',
-              padding: '12px',
-              background: C.brandRed,
-              color: C.cream,
-              border: 'none',
-              borderRadius: 8,
-              ...F(11, 500, C.cream),
-              letterSpacing: 2,
-              textTransform: 'uppercase',
-              cursor: 'pointer',
-            }}
-          >
-            Track Order
-          </button>
-        </form>
-
-        <div style={{ ...F(10, 400, '#888'), textAlign: 'center', marginTop: 16 }}>
-          Your order number is in your confirmation email.
-        </div>
+            <button
+              onClick={() => {
+                onClose();
+                navigate('/signin');
+              }}
+              style={{
+                background: C.brandRed,
+                color: C.cream,
+                border: 'none',
+                padding: '10px 24px',
+                ...F(11, 500, C.cream),
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                borderRadius: 8,
+              }}
+            >
+              Sign In
+            </button>
+          </div>
+        ) : loading ? (
+          <div style={{ textAlign: 'center', padding: 20, ...F(13, 400, '#888') }}>
+            Loading...
+          </div>
+        ) : orders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 20 }}>
+            <div style={{ ...F(13, 400, '#888'), marginBottom: 12 }}>
+              You haven't placed any orders yet.
+            </div>
+            <button
+              onClick={() => {
+                onClose();
+                navigate('/');
+              }}
+              style={{
+                background: C.brandRed,
+                color: C.cream,
+                border: 'none',
+                padding: '10px 24px',
+                ...F(11, 500, C.cream),
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                borderRadius: 8,
+              }}
+            >
+              Start Shopping
+            </button>
+          </div>
+        ) : (
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {orders.map((order) => {
+              const st = STATUS_META[order.status] || STATUS_META.placed;
+              return (
+                <div
+                  key={order._id}
+                  onClick={() => handleOrderClick(order.orderNumber)}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 14px',
+                    borderBottom: `0.5px solid ${C.border}`,
+                    cursor: 'pointer',
+                    transition: 'background 0.15s',
+                    borderRadius: 6,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = C.cream)}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ ...F(12, 500, C.ink) }}>
+                      {order.orderNumber}
+                    </div>
+                    <div style={{ ...F(10, 400, '#888') }}>
+                      {new Date(order.createdAt).toLocaleDateString()} · {order.items?.length || 0} items
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                    <span
+                      style={{
+                        background: st.bg,
+                        color: st.fg,
+                        padding: '3px 10px',
+                        borderRadius: 4,
+                        ...F(9, 500),
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {st.label}
+                    </span>
+                    <span style={{ ...F(10, 400, '#888') }}>→</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
