@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -18,16 +19,56 @@ import TrackingPage from './pages/TrackingPage';
 // Guest can still view cart
 import CartPage from './pages/CartPage';
 
-// Protected Pages (must be logged in)
+// Protected Pages
 import AccountPage from './pages/AccountPage';
 import AddressesPage from './pages/AddressesPage';
-import CheckoutPage from './pages/CheckoutPage'; // now protected
+import CheckoutPage from './pages/CheckoutPage';
 import FavouritesPage from './pages/FavouritesPage';
 import OrdersPage from './pages/OrdersPage';
 import PaymentPage from './pages/PaymentPage';
 import SettingsPage from './pages/SettingsPage';
 
 function App() {
+  // ✅ Disable pinch-zoom on mobile
+  useEffect(() => {
+    const preventZoom = (e) => {
+      // Block gesture events (iOS Safari)
+      if (e.type === 'gesturestart' || e.type === 'gesturechange' || e.type === 'gestureend') {
+        e.preventDefault();
+        return false;
+      }
+      // Block touch events with two fingers (Android Chrome)
+      if (e.touches && e.touches.length > 1) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    document.addEventListener('gesturestart', preventZoom, { passive: false });
+    document.addEventListener('gesturechange', preventZoom, { passive: false });
+    document.addEventListener('gestureend', preventZoom, { passive: false });
+    document.addEventListener('touchmove', preventZoom, { passive: false });
+
+    // Also prevent double-tap zoom
+    let lastTouchEnd = 0;
+    const handleTouchEnd = (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    };
+    document.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    return () => {
+      document.removeEventListener('gesturestart', preventZoom);
+      document.removeEventListener('gesturechange', preventZoom);
+      document.removeEventListener('gestureend', preventZoom);
+      document.removeEventListener('touchmove', preventZoom);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
   return (
     <Routes>
       {/* Public */}
@@ -44,10 +85,10 @@ function App() {
       <Route path="/tracking" element={<TrackingPage />} />
       <Route path="/size-guide" element={<SizeGuidePage />} />
 
-      {/* Cart is still publicly viewable */}
+      {/* Cart */}
       <Route path="/cart" element={<CartPage />} />
 
-      {/* Protected routes */}
+      {/* Protected */}
       <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
       <Route path="/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
