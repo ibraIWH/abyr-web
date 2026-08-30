@@ -72,7 +72,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                 justifyContent: 'flex-start',
               }}
             >
-              {/* Dot — opaque, filled for active, outline for future */}
+              {/* Dot — MATCHED TO REFERENCE IMAGE */}
               <div
                 style={{
                   height: dotRowHeight,
@@ -87,8 +87,8 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                     width: dotSize,
                     height: dotSize,
                     borderRadius: '50%',
-                    background: isActive ? C.brandRed : 'white',
-                    border: `2px solid ${isActive ? C.brandRed : C.border}`,
+                    background: 'black', /* Changed: Cuts out the line inside */
+                    border: `2px solid white`, /* Changed: The white ring */
                     boxShadow: isCurrent
                       ? `0 0 0 ${isMobile ? '3px' : '5px'} rgba(196,168,130,0.2)`
                       : 'none',
