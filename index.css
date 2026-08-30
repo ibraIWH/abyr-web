@@ -1,0 +1,15 @@
+/* ===== Disable pinch-zoom on mobile ===== */
+html, body {
+  touch-action: pan-y;  /* prevents pinch-zoom */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Prevent double-tap zoom on interactive elements */
+button, a, img, .clickable, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Prevent zoom on product cards */
+.product-card, .product-image, .product-link {
+  touch-action: manipulation;
+}
