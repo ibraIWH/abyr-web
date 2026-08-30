@@ -7,6 +7,7 @@ import { C, F, Ser } from "../designTokens";
 import { PAGE_X, useIsMobile } from "../responsive";
 import MegaMenu from "./MegaMenu";
 import ModernSearch from "./ModernSearch";
+import TrackOrderModal from "./TrackOrderModal";
 
 const toSlug = (name = "") =>
   name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -15,6 +16,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [trackModalOpen, setTrackModalOpen] = useState(false);
   const { user } = useAuth();
   const { cartCount } = useCart();
   const { categories } = useSettings();
@@ -26,13 +28,11 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Stop the page scrolling behind the open drawer.
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
 
-  // Close the drawer if the window grows back to desktop.
   useEffect(() => {
     if (!isMobile) setDrawerOpen(false);
   }, [isMobile]);
@@ -68,8 +68,17 @@ export default function Navbar() {
         </Link>
 
         {isMobile ? (
-          /* Phone: cart stays visible, everything else moves into the drawer */
-          <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
+          /* Phone: FAV, TRACK, CART always visible */
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <Link to="/favourites" style={linkStyle}>
+              FAV
+            </Link>
+            <span
+              onClick={() => setTrackModalOpen(true)}
+              style={{ ...F(10, 400, C.ink), cursor: "pointer", letterSpacing: 1 }}
+            >
+              TRACK
+            </span>
             <Link to="/cart" style={{ position: "relative", ...linkStyle }}>
               CART
               {cartCount > 0 && (
@@ -98,7 +107,7 @@ export default function Navbar() {
             </button>
           </div>
         ) : (
-          /* Desktop: unchanged */
+          /* Desktop: full nav */
           <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
             <div
               onClick={() => setMegaOpen(!megaOpen)}
@@ -107,6 +116,12 @@ export default function Navbar() {
               SHOP
             </div>
             <ModernSearch />
+            <span
+              onClick={() => setTrackModalOpen(true)}
+              style={{ ...F(10, 400, C.ink), cursor: "pointer", letterSpacing: 1 }}
+            >
+              TRACK
+            </span>
             <Link to="/favourites" style={linkStyle}>FAV</Link>
             <Link to="/cart" style={{ position: "relative", ...linkStyle }}>
               CART
@@ -125,10 +140,8 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* Desktop mega menu only — the drawer covers phones */}
       {!isMobile && <MegaMenu open={megaOpen} onClose={() => setMegaOpen(false)} />}
 
-      {/* Mobile drawer */}
       {isMobile && drawerOpen && (
         <>
           <div
@@ -231,6 +244,11 @@ export default function Navbar() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Track Order Modal */}
+      {trackModalOpen && (
+        <TrackOrderModal onClose={() => setTrackModalOpen(false)} />
       )}
     </div>
   );

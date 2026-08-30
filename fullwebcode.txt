@@ -278,44 +278,91 @@ export const CartProvider = ({ children }) => {
     </CartContext.Provider>
   );
 };FILE: src/index.css
-/* Global Reset – removes default browser margins */
+/* ============================
+   Global Reset
+   ============================ */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+/* ============================
+   ZOOM PREVENTION — FIXED (Scrolling works!)
+   ============================ */
+
+/* 1. Block pinch-zoom on mobile */
+html, body {
+  touch-action: pan-y !important;
+  -webkit-text-size-adjust: 100%;
+  -webkit-touch-callout: none;
+  height: 100%;
+  width: 100%;
+}
+
+/* 2. Prevent double-tap zoom on interactive elements */
+button, a, img, .clickable, [role="button"],
+.product-card, .product-image, .product-link {
+  touch-action: manipulation !important;
+}
+
+/* 3. Force all elements to block zoom */
+* {
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 4. Desktop: Reset CSS zoom to 100% */
+html {
+  zoom: 1 !important;
+  -moz-transform: scale(1) !important;
+  -moz-transform-origin: 0 0 !important;
+}
+
+/* ============================
+   Animations
+   ============================ */
 @keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 @keyframes pulse {
-  0% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.6;
-  }
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
-/* Toast animation */
 .slide-in {
   animation: slideIn 0.3s ease forwards;
 }
 
-/* Skeleton pulse */
 .pulse {
   animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* ============================
+   Accessibility & Scrollbar
+   ============================ */
+:focus-visible {
+  outline: 2px solid #C4A882;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F5F0E8;
+}
+::-webkit-scrollbar-thumb {
+  background: #C4A882;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8B7355;
 }FILE: src/styles/responsive.css
 /* src/styles/responsive.css */
 @media (max-width: 768px) {
@@ -1258,7 +1305,267 @@ export default function EmptyState({ title, message, showShopButton = true }) {
       )}
     </div>
   );
-}FILE: src/components/ProductCardSkeleton.jsx
+}FILE: src/components/OrderStatusTimeline.jsx
+import { C, F } from '../designTokens';
+
+const STATUS_STEPS = [
+  { key: 'placed', label: 'Order Placed', icon: '📦' },
+  { key: 'confirmed', label: 'Confirmed', icon: '✅' },
+  { key: 'shipped', label: 'Shipped', icon: '🚚' },
+  { key: 'delivered', label: 'Delivered', icon: '🏠' },
+];
+
+export default function OrderStatusTimeline({ status, createdAt }) {
+  const currentIndex = STATUS_STEPS.findIndex((s) => s.key === status);
+  const date = new Date(createdAt).toLocaleDateString();
+
+  return (
+    <div style={{ padding: '20px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
+        {/* Progress line */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 20,
+            left: 20,
+            right: 20,
+            height: 3,
+            background: C.border,
+            zIndex: 0,
+          }}
+        >
+          <div
+            style={{
+              width: `${(currentIndex / (STATUS_STEPS.length - 1)) * 100}%`,
+              height: '100%',
+              background: C.brandRed,
+              transition: 'width 0.5s ease',
+            }}
+          />
+        </div>
+
+        {STATUS_STEPS.map((step, index) => {
+          const isActive = index <= currentIndex;
+          const isCurrent = index === currentIndex;
+
+          return (
+            <div
+              key={step.key}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                zIndex: 1,
+                flex: 1,
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  background: isActive ? C.brandRed : C.border,
+                  color: isActive ? C.cream : '#999',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 16,
+                  border: isCurrent ? `3px solid ${C.gold}` : 'none',
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                {step.icon}
+              </div>
+              <div
+                style={{
+                  ...F(9, isActive ? 500 : 400, isActive ? C.ink : '#999'),
+                  textAlign: 'center',
+                  marginTop: 8,
+                  letterSpacing: 0.5,
+                }}
+              >
+                {step.label}
+              </div>
+              {isCurrent && (
+                <div
+                  style={{
+                    ...F(8, 400, C.tan),
+                    marginTop: 4,
+                    textAlign: 'center',
+                  }}
+                >
+                  {date}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}FILE: src/components/ChangePasswordModal.jsx
+import { useState } from 'react';
+import api from '../api';
+import { useToast } from '../context/ToastContext';
+import { C, F } from '../designTokens';
+
+export default function ChangePasswordModal({ onClose }) {
+  const { addToast } = useToast();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.put('/auth/password', { currentPassword, newPassword });
+      addToast('Password updated successfully', 'success');
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '20px',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: C.white,
+          maxWidth: 420,
+          width: '100%',
+          padding: '28px',
+          border: `0.5px solid ${C.border}`,
+          borderRadius: 8,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 style={{ ...F(18, 500, C.ink), marginBottom: 8 }}>Change Password</h2>
+        <p style={{ ...F(12, 400, '#888'), marginBottom: 20 }}>Update your account password</p>
+
+        {error && (
+          <div style={{ background: '#FFEBEE', color: C.red, padding: '8px 12px', marginBottom: 16, ...F(11, 400) }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ ...F(10, 500, C.tan), letterSpacing: 1, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+              Current Password
+            </label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Enter current password"
+              required
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ ...F(10, 500, C.tan), letterSpacing: 1, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+              New Password
+            </label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Min. 8 characters"
+              required
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ ...F(10, 500, C.tan), letterSpacing: 1, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter new password"
+              required
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                flex: 1,
+                padding: '12px',
+                background: loading ? '#888' : C.brandRed,
+                color: C.cream,
+                border: 'none',
+                ...F(11, 500, C.cream),
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {loading ? 'Updating...' : 'Update Password'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: '12px 20px',
+                background: 'transparent',
+                border: `0.5px solid ${C.border}`,
+                ...F(11, 400, '#888'),
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+const inputStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  border: `0.5px solid ${C.border}`,
+  borderRadius: 4,
+  ...F(13, 400, C.ink),
+  outline: 'none',
+  boxSizing: 'border-box',
+};FILE: src/components/ProductCardSkeleton.jsx
 const ProductCardSkeleton = () => {
     return (
       <div style={{
@@ -2114,26 +2421,12 @@ import ReactDOM from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-import SplashScreen from './components/SplashScreen';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
-import { SettingsProvider, useSettings } from './context/SettingsContext';
+import { SettingsProvider } from './context/SettingsContext';
 import { ToastProvider } from './context/ToastContext';
-import './index.css';
+import './index.css'; // ← MUST be here
 import './styles/responsive.css';
-
-// Wrapper component that decides to show splash or app
-function AppWithSplash() {
-  const { loading: authLoading } = useAuth();
-  const { loading: settingsLoading } = useSettings();
-
-  // Show splash until both auth and settings are fully loaded
-  if (authLoading || settingsLoading) {
-    return <SplashScreen />;
-  }
-
-  return <App />;
-}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -2143,7 +2436,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <CartProvider>
             <ToastProvider>
               <SettingsProvider>
-                <AppWithSplash />
+                <App />
               </SettingsProvider>
             </ToastProvider>
           </CartProvider>
@@ -2198,6 +2491,7 @@ export function useMediaQuery(query) {
 
 export const useIsMobile = () => useMediaQuery('(max-width: 640px)');
 export const useIsTablet = () => useMediaQuery('(min-width: 641px) and (max-width: 1024px)');FILE: src/App.jsx
+import { useEffect } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -2215,19 +2509,86 @@ import SignUpPage from './pages/SignUpPage';
 import SizeGuidePage from './pages/SizeGuidePage';
 import TrackingPage from './pages/TrackingPage';
 
-// Guest can still view cart
 import CartPage from './pages/CartPage';
 
-// Protected Pages (must be logged in)
 import AccountPage from './pages/AccountPage';
 import AddressesPage from './pages/AddressesPage';
-import CheckoutPage from './pages/CheckoutPage'; // now protected
+import CheckoutPage from './pages/CheckoutPage';
 import FavouritesPage from './pages/FavouritesPage';
 import OrdersPage from './pages/OrdersPage';
 import PaymentPage from './pages/PaymentPage';
 import SettingsPage from './pages/SettingsPage';
 
 function App() {
+  // ============================================================
+  // ZOOM PREVENTION — FULL (Mobile + Desktop)
+  // ============================================================
+  useEffect(() => {
+    // ----- MOBILE: Block pinch-zoom -----
+    const preventZoom = (e) => {
+      if (e.type === 'gesturestart' || e.type === 'gesturechange' || e.type === 'gestureend') {
+        e.preventDefault();
+        return false;
+      }
+      if (e.touches && e.touches.length > 1) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    document.addEventListener('gesturestart', preventZoom, { passive: false });
+    document.addEventListener('gesturechange', preventZoom, { passive: false });
+    document.addEventListener('gestureend', preventZoom, { passive: false });
+    document.addEventListener('touchmove', preventZoom, { passive: false });
+
+    // ----- MOBILE: Block double-tap zoom -----
+    let lastTouchEnd = 0;
+    const handleTouchEnd = (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    };
+    document.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    // ----- DESKTOP: Block Ctrl+Plus, Ctrl+Minus, Ctrl+0 -----
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '0')) {
+        e.preventDefault();
+        return false;
+      }
+      if (e.metaKey && (e.key === '+' || e.key === '-' || e.key === '0')) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    // ----- DESKTOP: Block mouse wheel zoom (Ctrl+Scroll) -----
+    // Normal scrolling works — only blocks when Ctrl is held
+    const handleWheel = (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    document.addEventListener('wheel', handleWheel, { passive: false });
+
+    // ----- Cleanup -----
+    return () => {
+      document.removeEventListener('gesturestart', preventZoom);
+      document.removeEventListener('gesturechange', preventZoom);
+      document.removeEventListener('gestureend', preventZoom);
+      document.removeEventListener('touchmove', preventZoom);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
   return (
     <Routes>
       {/* Public */}
@@ -2244,10 +2605,8 @@ function App() {
       <Route path="/tracking" element={<TrackingPage />} />
       <Route path="/size-guide" element={<SizeGuidePage />} />
 
-      {/* Cart is still publicly viewable */}
       <Route path="/cart" element={<CartPage />} />
 
-      {/* Protected routes */}
       <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
       <Route path="/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
@@ -2256,7 +2615,6 @@ function App() {
       <Route path="/addresses" element={<ProtectedRoute><AddressesPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
 
-      {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
@@ -2902,27 +3260,20 @@ export default function CategoryPage() {
     </Layout>
   );
 }FILE: src/pages/TrackingPage.jsx
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import api from "../api";
-import Layout from "../components/Layout";
-import { C, F, Ser } from "../designTokens";
-
-const statusSteps = [
-  { key: "placed",     label: "Order Placed", time: "" },
-  { key: "confirmed",  label: "Confirmed",    time: "" },
-  { key: "shipped",    label: "Shipped",      time: "" },
-  { key: "delivered",  label: "Delivered",    time: "" },
-];
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import api from '../api';
+import Layout from '../components/Layout';
+import OrderStatusTimeline from '../components/OrderStatusTimeline';
+import { C, F, Ser } from '../designTokens';
 
 export default function TrackingPage() {
   const [searchParams] = useSearchParams();
-  const orderNumber = searchParams.get("order") || "ABR-00000000";
+  const orderNumber = searchParams.get('order') || 'ABR-00000000';
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // NEW: use the dedicated tracking endpoint
     api.get(`/orders/track/${orderNumber}`)
       .then((res) => setOrder(res.data))
       .catch((err) => console.error(err))
@@ -2932,9 +3283,9 @@ export default function TrackingPage() {
   if (loading) {
     return (
       <Layout>
-        <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
-            <span style={{ ...F(14, 400, "#888") }}>Loading order…</span>
+        <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+            <span style={{ ...F(14, 400, '#888') }}>Loading order…</span>
           </div>
         </div>
       </Layout>
@@ -2944,129 +3295,88 @@ export default function TrackingPage() {
   if (!order) {
     return (
       <Layout>
-        <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
-            <span style={{ ...F(14, 400, "#888") }}>Order not found</span>
+        <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+            <span style={{ ...F(14, 400, '#888') }}>Order not found</span>
           </div>
         </div>
       </Layout>
     );
   }
 
-  const currentStepIndex = statusSteps.findIndex((s) => s.key === order.status);
-
   return (
     <Layout>
-      <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, padding: "32px 64px" }}>
-          <div onClick={() => window.history.back()} style={{ ...F(10, 400, "#888"), cursor: "pointer", marginBottom: 18 }}>
+      <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, padding: '32px 64px' }}>
+          <div onClick={() => window.history.back()} style={{ ...F(10, 400, '#888'), cursor: 'pointer', marginBottom: 18 }}>
             ← Back to My Orders
           </div>
           <div style={{ ...Ser(28, 300, C.ink), marginBottom: 4 }}>Order {order.orderNumber}</div>
-          <div style={{ ...F(11, 400, "#888"), marginBottom: 32 }}>
+          <div style={{ ...F(11, 400, '#888'), marginBottom: 32 }}>
             Placed {new Date(order.createdAt).toLocaleDateString()}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48 }}>
-            {/* Timeline */}
-            <div>
-              <div style={{ ...Cap(C.tan), marginBottom: 20 }}>Delivery Status</div>
-              {statusSteps.map((step, i) => (
-                <div key={step.key} style={{ display: "flex", gap: 16, marginBottom: i < statusSteps.length - 1 ? 24 : 0 }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <div
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: "50%",
-                        background: i <= currentStepIndex ? C.brandRed : "#E8E8E4",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {i <= currentStepIndex && (
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="3">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </div>
-                    {i < statusSteps.length - 1 && (
-                      <div
-                        style={{
-                          width: 1,
-                          height: 34,
-                          background: i < currentStepIndex ? C.brandRed : "#E8E8E4",
-                          margin: "3px 0",
-                        }}
-                      />
-                    )}
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        ...F(11, i <= currentStepIndex ? 500 : 400, i <= currentStepIndex ? C.ink : "#AAA"),
-                        marginBottom: 3,
-                      }}
-                    >
-                      {step.label}
-                    </div>
-                    <div style={{ ...F(9, 400, "#888") }}>
-                      {i <= currentStepIndex ? new Date(order.createdAt).toLocaleDateString() : "—"}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
 
+          {/* Timeline */}
+          <OrderStatusTimeline status={order.status} createdAt={order.createdAt} />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, marginTop: 32 }}>
             {/* Order Summary */}
             <div>
-              <div style={{ ...Cap(C.tan), marginBottom: 20 }}>Order Summary</div>
-              <div style={{ background: C.linen, padding: "16px" }}>
-                {/* Items */}
-                <div style={{ marginBottom: 16 }}>
-                  {order.items.map((item, idx) => (
-                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                      <span style={{ ...F(10, 400, "#888") }}>{item.name} × {item.quantity}</span>
-                      <span style={{ ...F(10, 400, C.ink) }}>
-                        SAR {(item.price * item.quantity).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ height: 1, background: "#DDD", margin: "14px 0" }} />
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ ...F(10, 400, "#888") }}>Subtotal</span>
+              <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: 'uppercase', marginBottom: 20 }}>
+                Order Summary
+              </div>
+              <div style={{ background: C.cream, padding: '16px', borderRadius: 8 }}>
+                {order.items.map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ ...F(10, 400, '#888') }}>{item.name} × {item.quantity}</span>
+                    <span style={{ ...F(10, 400, C.ink) }}>
+                      SAR {(item.price * item.quantity).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+                <div style={{ height: 1, background: '#DDD', margin: '14px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ ...F(10, 400, '#888') }}>Subtotal</span>
                   <span style={{ ...F(10, 400, C.ink) }}>SAR {order.subtotal.toFixed(2)}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ ...F(10, 400, "#888") }}>Delivery</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ ...F(10, 400, '#888') }}>Delivery</span>
                   <span style={{ ...F(10, 400, order.deliveryFee === 0 ? C.green : C.ink) }}>
-                    {order.deliveryFee === 0 ? "Free" : `SAR ${order.deliveryFee.toFixed(2)}`}
+                    {order.deliveryFee === 0 ? 'Free' : `SAR ${order.deliveryFee.toFixed(2)}`}
                   </span>
                 </div>
-                <div style={{ height: 1, background: "#DDD", margin: "14px 0" }} />
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div style={{ height: 1, background: '#DDD', margin: '14px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ ...F(12, 500, C.ink) }}>Total</span>
                   <span style={{ ...Ser(16, 300, C.tan) }}>SAR {order.total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
+
+            {/* Shipping Address */}
+            {order.shippingAddress && (
+              <div>
+                <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: 'uppercase', marginBottom: 20 }}>
+                  Delivery Address
+                </div>
+                <div style={{ background: C.white, padding: '16px', border: `0.5px solid ${C.border}`, borderRadius: 8 }}>
+                  <div style={{ ...F(12, 500, C.ink) }}>{order.shippingAddress.name}</div>
+                  <div style={{ ...F(11, 400, '#888'), lineHeight: 1.6, marginTop: 4 }}>
+                    {order.shippingAddress.line1}<br />
+                    {order.shippingAddress.city}
+                  </div>
+                  {order.shippingAddress.phone && (
+                    <div style={{ ...F(11, 400, '#888'), marginTop: 4 }}>{order.shippingAddress.phone}</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </Layout>
   );
-}
-
-const Cap = (c = "#8B7355") => ({
-  fontFamily: "'DM Sans', sans-serif",
-  fontSize: 9,
-  color: c,
-  letterSpacing: 2,
-  textTransform: "uppercase",
-});FILE: src/pages/AccountPage.jsx
+}FILE: src/pages/AccountPage.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api";
@@ -4489,25 +4799,38 @@ export default function OrderConfirmedPage() {
     </Layout>
   );
 }FILE: src/pages/SettingsPage.jsx
-import { useState } from "react";
-import Layout from "../components/Layout";
-import { useAuth } from "../context/AuthContext";
-import { C, F, Ser } from "../designTokens";
+import { useState } from 'react';
+import ChangePasswordModal from '../components/ChangePasswordModal';
+import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
+import { C, F, Ser } from '../designTokens';
 
 export default function SettingsPage({ standalone = true }) {
   const { logout } = useAuth();
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   const handleSignOut = () => {
     logout();
   };
 
   const content = (
-    <div style={{ padding: standalone ? "28px clamp(16px, 5vw, 64px)" : "0" }}>
+    <div style={{ padding: standalone ? '28px clamp(16px, 5vw, 64px)' : '0' }}>
       <div style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Settings</div>
       <div style={{ marginBottom: 28 }}>
-        <div style={{ ...F(11, 400, "#888"), marginBottom: 8 }}>Account security</div>
-        <div style={{ ...F(13, 400, C.ink), padding: "12px 0", borderBottom: "0.5px solid #EEE", cursor: "not-allowed", opacity: 0.6 }}>
+        <div style={{ ...F(11, 400, '#888'), marginBottom: 8 }}>Account security</div>
+        <div
+          onClick={() => setShowPasswordModal(true)}
+          style={{
+            ...F(13, 400, C.ink),
+            padding: '12px 0',
+            borderBottom: '0.5px solid #EEE',
+            cursor: 'pointer',
+            transition: 'color 0.15s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.color = C.brandRed}
+          onMouseLeave={(e) => e.currentTarget.style.color = C.ink}
+        >
           Change password
         </div>
       </div>
@@ -4516,28 +4839,32 @@ export default function SettingsPage({ standalone = true }) {
         style={{
           background: C.red,
           color: C.white,
-          border: "none",
-          padding: "12px 28px",
+          border: 'none',
+          padding: '12px 28px',
           ...F(11, 500),
           letterSpacing: 2,
-          textTransform: "uppercase",
-          cursor: "pointer",
+          textTransform: 'uppercase',
+          cursor: 'pointer',
         }}
       >
         Sign Out
       </button>
       {showConfirm && (
-        <div style={{ marginTop: 12, background: "#FFEBEE", padding: 12 }}>
+        <div style={{ marginTop: 12, background: '#FFEBEE', padding: 12 }}>
           <div style={{ ...F(10, 400, C.red), marginBottom: 8 }}>Are you sure you want to sign out?</div>
-          <div style={{ display: "flex", gap: 12 }}>
-            <button onClick={handleSignOut} style={{ background: C.red, color: C.white, border: "none", padding: "6px 14px", ...F(10, 500), cursor: "pointer" }}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button onClick={handleSignOut} style={{ background: C.red, color: C.white, border: 'none', padding: '6px 14px', ...F(10, 500), cursor: 'pointer' }}>
               Yes, Sign Out
             </button>
-            <button onClick={() => setShowConfirm(false)} style={{ background: "#EEE", color: "#666", border: "none", padding: "6px 14px", ...F(10, 500), cursor: "pointer" }}>
+            <button onClick={() => setShowConfirm(false)} style={{ background: '#EEE', color: '#666', border: 'none', padding: '6px 14px', ...F(10, 500), cursor: 'pointer' }}>
               Cancel
             </button>
           </div>
         </div>
+      )}
+
+      {showPasswordModal && (
+        <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />
       )}
     </div>
   );
@@ -4546,10 +4873,9 @@ export default function SettingsPage({ standalone = true }) {
 
   return (
     <Layout>
-    <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {content}
-    
-    </div>
+      <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {content}
+      </div>
     </Layout>
   );
 }FILE: src/pages/FavouritesPage.jsx
