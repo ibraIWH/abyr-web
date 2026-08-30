@@ -74,7 +74,7 @@ function App() {
     document.addEventListener('keydown', handleKeyDown);
 
     // ----- DESKTOP: Block mouse wheel zoom (Ctrl+Scroll) -----
-    // WARNING: This also blocks ALL scroll wheel events!
+    // Normal scrolling works — only blocks when Ctrl is held
     const handleWheel = (e) => {
       if (e.ctrlKey) {
         e.preventDefault();

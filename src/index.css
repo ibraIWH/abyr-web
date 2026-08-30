@@ -8,7 +8,7 @@
 }
 
 /* ============================
-   ZOOM PREVENTION — FULL
+   ZOOM PREVENTION — FIXED (Scrolling works!)
    ============================ */
 
 /* 1. Block pinch-zoom on mobile */
@@ -16,9 +16,11 @@ html, body {
   touch-action: pan-y !important;
   -webkit-text-size-adjust: 100%;
   -webkit-touch-callout: none;
+  height: 100%;
+  width: 100%;
 }
 
-/* 2. Prevent double-tap zoom on all interactive elements */
+/* 2. Prevent double-tap zoom on interactive elements */
 button, a, img, .clickable, [role="button"],
 .product-card, .product-image, .product-link {
   touch-action: manipulation !important;
@@ -28,8 +30,6 @@ button, a, img, .clickable, [role="button"],
 * {
   touch-action: manipulation !important;
   -webkit-tap-highlight-color: transparent;
-  -webkit-user-select: none;
-  user-select: none;
 }
 
 /* 4. Desktop: Reset CSS zoom to 100% */
@@ -37,28 +37,6 @@ html {
   zoom: 1 !important;
   -moz-transform: scale(1) !important;
   -moz-transform-origin: 0 0 !important;
-}
-
-/* 5. Block Ctrl+Scroll zoom (workaround — disables scroll) */
-/* ⚠️ WARNING: This also blocks ALL scroll wheel events! */
-body {
-  overflow: hidden !important;
-  height: 100vh;
-  width: 100vw;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-}
-
-/* Enable scroll only inside specific containers (e.g., product grid) */
-.scrollable {
-  overflow-y: auto !important;
-  height: 100vh;
-  width: 100vw;
-  -webkit-overflow-scrolling: touch;
-  position: relative;
 }
 
 /* ============================
