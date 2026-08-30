@@ -16,10 +16,8 @@ import SignUpPage from './pages/SignUpPage';
 import SizeGuidePage from './pages/SizeGuidePage';
 import TrackingPage from './pages/TrackingPage';
 
-// Guest can still view cart
 import CartPage from './pages/CartPage';
 
-// Protected Pages
 import AccountPage from './pages/AccountPage';
 import AddressesPage from './pages/AddressesPage';
 import CheckoutPage from './pages/CheckoutPage';
@@ -29,15 +27,14 @@ import PaymentPage from './pages/PaymentPage';
 import SettingsPage from './pages/SettingsPage';
 
 function App() {
-  // ✅ Disable pinch-zoom on mobile
+  // Disable pinch-zoom on mobile + keyboard shortcuts on desktop
   useEffect(() => {
+    // ----- Mobile: block pinch-zoom -----
     const preventZoom = (e) => {
-      // Block gesture events (iOS Safari)
       if (e.type === 'gesturestart' || e.type === 'gesturechange' || e.type === 'gestureend') {
         e.preventDefault();
         return false;
       }
-      // Block touch events with two fingers (Android Chrome)
       if (e.touches && e.touches.length > 1) {
         e.preventDefault();
         return false;
@@ -49,7 +46,7 @@ function App() {
     document.addEventListener('gestureend', preventZoom, { passive: false });
     document.addEventListener('touchmove', preventZoom, { passive: false });
 
-    // Also prevent double-tap zoom
+    // Prevent double-tap zoom
     let lastTouchEnd = 0;
     const handleTouchEnd = (e) => {
       const now = Date.now();
@@ -60,12 +57,28 @@ function App() {
     };
     document.addEventListener('touchend', handleTouchEnd, { passive: false });
 
+    // ----- Desktop: block Ctrl+Plus, Ctrl+Minus, Ctrl+0 -----
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '0')) {
+        e.preventDefault();
+        return false;
+      }
+      if (e.metaKey && (e.key === '+' || e.key === '-' || e.key === '0')) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    // ----- Cleanup -----
     return () => {
       document.removeEventListener('gesturestart', preventZoom);
       document.removeEventListener('gesturechange', preventZoom);
       document.removeEventListener('gestureend', preventZoom);
       document.removeEventListener('touchmove', preventZoom);
       document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -85,10 +98,8 @@ function App() {
       <Route path="/tracking" element={<TrackingPage />} />
       <Route path="/size-guide" element={<SizeGuidePage />} />
 
-      {/* Cart */}
       <Route path="/cart" element={<CartPage />} />
 
-      {/* Protected */}
       <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
       <Route path="/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
@@ -97,7 +108,6 @@ function App() {
       <Route path="/addresses" element={<ProtectedRoute><AddressesPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
 
-      {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
