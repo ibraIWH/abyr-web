@@ -1,39 +1,108 @@
-/* Global Reset – removes default browser margins */
+/* ============================
+   Global Reset
+   ============================ */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+/* ============================
+   ZOOM PREVENTION — FULL
+   ============================ */
+
+/* 1. Block pinch-zoom on mobile */
+html, body {
+  touch-action: pan-y !important;
+  -webkit-text-size-adjust: 100%;
+  -webkit-touch-callout: none;
+}
+
+/* 2. Prevent double-tap zoom on all interactive elements */
+button, a, img, .clickable, [role="button"],
+.product-card, .product-image, .product-link {
+  touch-action: manipulation !important;
+}
+
+/* 3. Force all elements to block zoom */
+* {
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 4. Desktop: Reset CSS zoom to 100% */
+html {
+  zoom: 1 !important;
+  -moz-transform: scale(1) !important;
+  -moz-transform-origin: 0 0 !important;
+}
+
+/* 5. Block Ctrl+Scroll zoom (workaround — disables scroll) */
+/* ⚠️ WARNING: This also blocks ALL scroll wheel events! */
+body {
+  overflow: hidden !important;
+  height: 100vh;
+  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Enable scroll only inside specific containers (e.g., product grid) */
+.scrollable {
+  overflow-y: auto !important;
+  height: 100vh;
+  width: 100vw;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+}
+
+/* ============================
+   Animations
+   ============================ */
 @keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 @keyframes pulse {
-  0% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.6;
-  }
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
-/* Toast animation */
 .slide-in {
   animation: slideIn 0.3s ease forwards;
 }
 
-/* Skeleton pulse */
 .pulse {
   animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* ============================
+   Accessibility & Scrollbar
+   ============================ */
+:focus-visible {
+  outline: 2px solid #C4A882;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F5F0E8;
+}
+::-webkit-scrollbar-thumb {
+  background: #C4A882;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8B7355;
 }

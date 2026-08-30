@@ -27,9 +27,11 @@ import PaymentPage from './pages/PaymentPage';
 import SettingsPage from './pages/SettingsPage';
 
 function App() {
-  // Disable pinch-zoom on mobile + keyboard shortcuts on desktop
+  // ============================================================
+  // ZOOM PREVENTION — FULL (Mobile + Desktop)
+  // ============================================================
   useEffect(() => {
-    // ----- Mobile: block pinch-zoom -----
+    // ----- MOBILE: Block pinch-zoom -----
     const preventZoom = (e) => {
       if (e.type === 'gesturestart' || e.type === 'gesturechange' || e.type === 'gestureend') {
         e.preventDefault();
@@ -46,7 +48,7 @@ function App() {
     document.addEventListener('gestureend', preventZoom, { passive: false });
     document.addEventListener('touchmove', preventZoom, { passive: false });
 
-    // Prevent double-tap zoom
+    // ----- MOBILE: Block double-tap zoom -----
     let lastTouchEnd = 0;
     const handleTouchEnd = (e) => {
       const now = Date.now();
@@ -57,7 +59,7 @@ function App() {
     };
     document.addEventListener('touchend', handleTouchEnd, { passive: false });
 
-    // ----- Desktop: block Ctrl+Plus, Ctrl+Minus, Ctrl+0 -----
+    // ----- DESKTOP: Block Ctrl+Plus, Ctrl+Minus, Ctrl+0 -----
     const handleKeyDown = (e) => {
       if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '0')) {
         e.preventDefault();
@@ -71,6 +73,17 @@ function App() {
 
     document.addEventListener('keydown', handleKeyDown);
 
+    // ----- DESKTOP: Block mouse wheel zoom (Ctrl+Scroll) -----
+    // WARNING: This also blocks ALL scroll wheel events!
+    const handleWheel = (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    document.addEventListener('wheel', handleWheel, { passive: false });
+
     // ----- Cleanup -----
     return () => {
       document.removeEventListener('gesturestart', preventZoom);
@@ -79,6 +92,7 @@ function App() {
       document.removeEventListener('touchmove', preventZoom);
       document.removeEventListener('touchend', handleTouchEnd);
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('wheel', handleWheel);
     };
   }, []);
 
