@@ -17,30 +17,26 @@ export default function OrderStatusTimeline({ status, createdAt }) {
     year: 'numeric',
   });
 
-  const dotSize = isMobile ? 16 : 22;
+  const dotSize = isMobile ? 18 : 24;
   const labelSize = isMobile ? 8 : 10;
   const dateSize = isMobile ? 7 : 9;
   const tagSize = isMobile ? 6 : 7;
   const tagPadding = isMobile ? '1px 6px' : '2px 10px';
   const progress = (currentIndex / (STATUS_STEPS.length - 1)) * 100;
 
-  // Fixed height for every step — prevents any misalignment
-  const STEP_HEIGHT = isMobile ? 90 : 120;
+  const dotRowHeight = isMobile ? 36 : 48;
+  const labelRowHeight = isMobile ? 20 : 28;
+  const extraRowHeight = isMobile ? 36 : 48;
+  const stepHeight = dotRowHeight + labelRowHeight + extraRowHeight;
 
   return (
     <div style={{ padding: `${isMobile ? '12px' : '20px'} 0`, width: '100%' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          position: 'relative',
-        }}
-      >
-        {/* Progress line */}
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between' }}>
+        {/* Line — centered vertically in the dot row, behind the dots */}
         <div
           style={{
             position: 'absolute',
-            top: isMobile ? 16 : 22,
+            top: dotRowHeight / 2,
             left: '4%',
             right: '4%',
             height: 2,
@@ -59,6 +55,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
         </div>
 
         {STATUS_STEPS.map((step, index) => {
+          const isActive = index <= currentIndex;
           const isCurrent = index === currentIndex;
 
           return (
@@ -71,14 +68,14 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                 width: '25%',
                 position: 'relative',
                 zIndex: 1,
-                height: STEP_HEIGHT,
+                height: stepHeight,
                 justifyContent: 'flex-start',
               }}
             >
-              {/* Dot — filled ONLY for current step */}
+              {/* Dot — opaque, filled for active, outline for future */}
               <div
                 style={{
-                  height: isMobile ? 30 : 40,
+                  height: dotRowHeight,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -90,8 +87,8 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                     width: dotSize,
                     height: dotSize,
                     borderRadius: '50%',
-                    background: isCurrent ? C.brandRed : 'transparent',
-                    border: `2px solid ${isCurrent ? C.brandRed : C.border}`,
+                    background: isActive ? C.brandRed : 'white',
+                    border: `2px solid ${isActive ? C.brandRed : C.border}`,
                     boxShadow: isCurrent
                       ? `0 0 0 ${isMobile ? '3px' : '5px'} rgba(196,168,130,0.2)`
                       : 'none',
@@ -101,30 +98,29 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                 />
               </div>
 
-              {/* Label — all labels stay in the same position */}
+              {/* Label */}
               <div
                 style={{
-                  ...F(labelSize, isCurrent ? 500 : 400, isCurrent ? C.ink : '#999'),
+                  height: labelRowHeight,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  ...F(labelSize, isActive ? 500 : 400, isActive ? C.ink : '#999'),
                   textAlign: 'center',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   padding: '0 2px',
-                  lineHeight: 1.3,
-                  height: isMobile ? 20 : 28,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '100%',
                 }}
               >
                 {step.label}
               </div>
 
-              {/* Extra content — date + "Current" tag (fixed height so it never pushes anything) */}
+              {/* Extra row: date + tag only for current */}
               <div
                 style={{
-                  height: isMobile ? 36 : 48,
+                  height: extraRowHeight,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
@@ -155,11 +151,10 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      Current   {/* ← Fixed: was "SUBMIT" — now correctly "Current" */}
+                      Current
                     </div>
                   </>
                 ) : (
-                  /* Empty spacer — keeps every step the same height */
                   <div style={{ height: isMobile ? 32 : 44 }} />
                 )}
               </div>
