@@ -1,4 +1,5 @@
 import { C, F } from '../designTokens';
+import { useIsMobile } from '../responsive';
 
 const STATUS_STEPS = [
   { key: 'placed', label: 'Placed' },
@@ -8,6 +9,7 @@ const STATUS_STEPS = [
 ];
 
 export default function OrderStatusTimeline({ status, createdAt }) {
+  const isMobile = useIsMobile();
   const currentIndex = STATUS_STEPS.findIndex((s) => s.key === status);
   const date = new Date(createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -15,27 +17,33 @@ export default function OrderStatusTimeline({ status, createdAt }) {
     year: 'numeric',
   });
 
-  const isMobile = window.innerWidth <= 640;
+  const dotSize = isMobile ? 16 : 22;
+  const currentDotSize = isMobile ? 22 : 28;
+  const labelSize = isMobile ? 7 : 9;
+  const dateSize = isMobile ? 6 : 7;
+  const tagSize = isMobile ? 5 : 6;
+  const tagPadding = isMobile ? '1px 6px' : '2px 10px';
+  const progress = (currentIndex / (STATUS_STEPS.length - 1)) * 100;
 
   return (
-    <div style={{ padding: '20px 0', width: '100%' }}>
-      <div style={{ position: 'relative', paddingTop: 12 }}>
-        {/* Horizontal line */}
+    <div style={{ padding: `${isMobile ? '12px' : '20px'} 0`, width: '100%' }}>
+      <div style={{ position: 'relative', paddingTop: isMobile ? 6 : 10 }}>
+        {/* Line — full width, centered */}
         <div
           style={{
             position: 'absolute',
-            top: 18,
-            left: '5%',
-            right: '5%',
+            top: isMobile ? 14 : 20,
+            left: '4%',
+            right: '4%',
             height: 2,
             background: C.border,
             zIndex: 0,
           }}
         >
-          {/* Progress fill */}
+          {/* Colored progress */}
           <div
             style={{
-              width: `${(currentIndex / (STATUS_STEPS.length - 1)) * 100}%`,
+              width: `${progress}%`,
               height: '100%',
               background: C.brandRed,
               transition: 'width 0.6s ease',
@@ -50,12 +58,13 @@ export default function OrderStatusTimeline({ status, createdAt }) {
             justifyContent: 'space-between',
             position: 'relative',
             zIndex: 1,
+            width: '100%',
           }}
         >
           {STATUS_STEPS.map((step, index) => {
             const isActive = index <= currentIndex;
             const isCurrent = index === currentIndex;
-            const size = isCurrent ? 24 : 16;
+            const size = isCurrent ? currentDotSize : dotSize;
 
             return (
               <div
@@ -65,6 +74,8 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                   flexDirection: 'column',
                   alignItems: 'center',
                   flex: 1,
+                  minWidth: 0,
+                  maxWidth: '25%',
                 }}
               >
                 {/* Dot */}
@@ -76,54 +87,59 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                     background: isActive ? C.brandRed : C.border,
                     border: isCurrent ? `2px solid ${C.gold}` : 'none',
                     boxShadow: isCurrent
-                      ? `0 0 0 4px rgba(196,168,130,0.2)`
+                      ? `0 0 0 ${isMobile ? '3px' : '5px'} rgba(196,168,130,0.2)`
                       : 'none',
                     transition: 'all 0.3s ease',
-                    marginBottom: 8,
+                    flexShrink: 0,
                   }}
                 />
 
                 {/* Label */}
                 <div
                   style={{
-                    ...F(9, isActive ? 500 : 400, isActive ? C.ink : '#999'),
+                    ...F(labelSize, isActive ? 500 : 400, isActive ? C.ink : '#999'),
                     textAlign: 'center',
-                    letterSpacing: 0.3,
+                    marginTop: isMobile ? 4 : 8,
+                    letterSpacing: 0.2,
+                    lineHeight: 1.2,
                     whiteSpace: 'nowrap',
-                    fontSize: isMobile ? 7 : 9,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: '100%',
+                    width: '100%',
+                    padding: '0 2px',
                   }}
                 >
                   {step.label}
                 </div>
 
-                {/* Date - only for current */}
+                {/* Date — only for current */}
                 {isCurrent && (
                   <div
                     style={{
-                      ...F(7, 400, C.tan),
+                      ...F(dateSize, 400, C.tan),
+                      marginTop: isMobile ? 2 : 4,
                       textAlign: 'center',
-                      marginTop: 4,
-                      fontSize: isMobile ? 6 : 7,
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {date}
                   </div>
                 )}
 
-                {/* "Current" tag */}
+                {/* "Current" tag — only for current */}
                 {isCurrent && (
                   <div
                     style={{
-                      marginTop: 4,
+                      marginTop: isMobile ? 2 : 4,
                       background: C.gold,
                       color: C.ink,
-                      ...F(6, 700),
-                      letterSpacing: 0.5,
+                      ...F(tagSize, 700),
+                      letterSpacing: 0.3,
                       textTransform: 'uppercase',
-                      padding: '1px 8px',
-                      borderRadius: 10,
+                      padding: tagPadding,
+                      borderRadius: 8,
                       whiteSpace: 'nowrap',
-                      fontSize: isMobile ? 5 : 6,
                     }}
                   >
                     Current
