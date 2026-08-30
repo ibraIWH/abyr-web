@@ -17,7 +17,6 @@ export default function OrderStatusTimeline({ status, createdAt }) {
     year: 'numeric',
   });
 
-  // ALL dots are the SAME size (no size difference)
   const dotSize = isMobile ? 16 : 22;
   const labelSize = isMobile ? 8 : 10;
   const dateSize = isMobile ? 7 : 9;
@@ -25,7 +24,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
   const tagPadding = isMobile ? '1px 6px' : '2px 10px';
   const progress = (currentIndex / (STATUS_STEPS.length - 1)) * 100;
 
-  // Fixed step height
+  // Fixed height for every step — prevents any misalignment
   const STEP_HEIGHT = isMobile ? 90 : 120;
 
   return (
@@ -37,7 +36,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
           position: 'relative',
         }}
       >
-        {/* Line */}
+        {/* Progress line */}
         <div
           style={{
             position: 'absolute',
@@ -76,7 +75,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                 justifyContent: 'flex-start',
               }}
             >
-              {/* Dot — empty (outline) for all, filled ONLY for current */}
+              {/* Dot — filled ONLY for current step */}
               <div
                 style={{
                   height: isMobile ? 30 : 40,
@@ -102,7 +101,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                 />
               </div>
 
-              {/* Label */}
+              {/* Label — all labels stay in the same position */}
               <div
                 style={{
                   ...F(labelSize, isCurrent ? 500 : 400, isCurrent ? C.ink : '#999'),
@@ -122,7 +121,7 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                 {step.label}
               </div>
 
-              {/* Extra content (date + tag) — only for current */}
+              {/* Extra content — date + "Current" tag (fixed height so it never pushes anything) */}
               <div
                 style={{
                   height: isMobile ? 36 : 48,
@@ -156,11 +155,11 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      Current
+                      Current   {/* ← Fixed: was "SUBMIT" — now correctly "Current" */}
                     </div>
                   </>
                 ) : (
-                  /* Empty spacer to keep height consistent */
+                  /* Empty spacer — keeps every step the same height */
                   <div style={{ height: isMobile ? 32 : 44 }} />
                 )}
               </div>
