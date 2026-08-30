@@ -1,27 +1,31 @@
 import { C, F } from '../designTokens';
 
 const STATUS_STEPS = [
-  { key: 'placed', label: 'Order Placed', icon: '📦' },
-  { key: 'confirmed', label: 'Confirmed', icon: '✅' },
-  { key: 'shipped', label: 'Shipped', icon: '🚚' },
-  { key: 'delivered', label: 'Delivered', icon: '🏠' },
+  { key: 'placed', label: 'Order Placed' },
+  { key: 'confirmed', label: 'Confirmed' },
+  { key: 'shipped', label: 'Shipped' },
+  { key: 'delivered', label: 'Delivered' },
 ];
 
 export default function OrderStatusTimeline({ status, createdAt }) {
   const currentIndex = STATUS_STEPS.findIndex((s) => s.key === status);
-  const date = new Date(createdAt).toLocaleDateString();
+  const date = new Date(createdAt).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
   return (
-    <div style={{ padding: '20px 0' }}>
+    <div style={{ padding: '16px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
         {/* Progress line */}
         <div
           style={{
             position: 'absolute',
-            top: 20,
-            left: 20,
-            right: 20,
-            height: 3,
+            top: 10,
+            left: 0,
+            right: 0,
+            height: 2,
             background: C.border,
             zIndex: 0,
           }}
@@ -51,38 +55,36 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                 flex: 1,
               }}
             >
+              {/* Dot */}
               <div
                 style={{
-                  width: 40,
-                  height: 40,
+                  width: 20,
+                  height: 20,
                   borderRadius: '50%',
                   background: isActive ? C.brandRed : C.border,
-                  color: isActive ? C.cream : '#999',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 16,
                   border: isCurrent ? `3px solid ${C.gold}` : 'none',
                   transition: 'all 0.3s ease',
                 }}
-              >
-                {step.icon}
-              </div>
+              />
+
+              {/* Label */}
               <div
                 style={{
                   ...F(9, isActive ? 500 : 400, isActive ? C.ink : '#999'),
                   textAlign: 'center',
                   marginTop: 8,
-                  letterSpacing: 0.5,
+                  letterSpacing: 0.3,
                 }}
               >
                 {step.label}
               </div>
+
+              {/* Date — shown only for the current/active step */}
               {isCurrent && (
                 <div
                   style={{
                     ...F(8, 400, C.tan),
-                    marginTop: 4,
+                    marginTop: 2,
                     textAlign: 'center',
                   }}
                 >
