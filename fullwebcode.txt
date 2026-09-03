@@ -1307,39 +1307,58 @@ export default function EmptyState({ title, message, showShopButton = true }) {
   );
 }FILE: src/components/OrderStatusTimeline.jsx
 import { C, F } from '../designTokens';
+import { useIsMobile } from '../responsive';
 
 const STATUS_STEPS = [
-  { key: 'placed', label: 'Order Placed', icon: '📦' },
-  { key: 'confirmed', label: 'Confirmed', icon: '✅' },
-  { key: 'shipped', label: 'Shipped', icon: '🚚' },
-  { key: 'delivered', label: 'Delivered', icon: '🏠' },
+  { key: 'placed', label: 'Placed' },
+  { key: 'confirmed', label: 'Confirmed' },
+  { key: 'shipped', label: 'Shipped' },
+  { key: 'delivered', label: 'Delivered' },
 ];
 
 export default function OrderStatusTimeline({ status, createdAt }) {
+  const isMobile = useIsMobile();
   const currentIndex = STATUS_STEPS.findIndex((s) => s.key === status);
-  const date = new Date(createdAt).toLocaleDateString();
+  const date = new Date(createdAt).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  const dotSize = isMobile ? 18 : 24;
+  const labelSize = isMobile ? 8 : 10;
+  const dateSize = isMobile ? 7 : 9;
+  const tagSize = isMobile ? 6 : 7;
+  const tagPadding = isMobile ? '1px 6px' : '2px 10px';
+  const progress = (currentIndex / (STATUS_STEPS.length - 1)) * 100;
+
+  const dotRowHeight = isMobile ? 36 : 48;
+  const labelRowHeight = isMobile ? 20 : 28;
+  const extraRowHeight = isMobile ? 36 : 48;
+  const stepHeight = dotRowHeight + labelRowHeight + extraRowHeight;
 
   return (
-    <div style={{ padding: '20px 0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
-        {/* Progress line */}
+    <div style={{ padding: `${isMobile ? '12px' : '20px'} 0`, width: '100%' }}>
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between' }}>
+        
+        {/* Line — Black */}
         <div
           style={{
             position: 'absolute',
-            top: 20,
-            left: 20,
-            right: 20,
-            height: 3,
-            background: C.border,
+            top: dotRowHeight / 2,
+            left: '4%',
+            right: '4%',
+            height: 2,
+            background: 'black', 
             zIndex: 0,
           }}
         >
           <div
             style={{
-              width: `${(currentIndex / (STATUS_STEPS.length - 1)) * 100}%`,
+              width: `${progress}%`,
               height: '100%',
-              background: C.brandRed,
-              transition: 'width 0.5s ease',
+              background: 'black', 
+              transition: 'width 0.6s ease',
             }}
           />
         </div>
@@ -1355,48 +1374,100 @@ export default function OrderStatusTimeline({ status, createdAt }) {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
+                width: '25%',
+                position: 'relative',
                 zIndex: 1,
-                flex: 1,
+                height: stepHeight,
+                justifyContent: 'flex-start',
               }}
             >
+              {/* Dot — White hole for past/future, Filled black for current */}
               <div
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: '50%',
-                  background: isActive ? C.brandRed : C.border,
-                  color: isActive ? C.cream : '#999',
+                  height: dotRowHeight,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 16,
-                  border: isCurrent ? `3px solid ${C.gold}` : 'none',
-                  transition: 'all 0.3s ease',
+                  width: '100%',
                 }}
               >
-                {step.icon}
+                <div
+                  style={{
+                    width: dotSize,
+                    height: dotSize,
+                    borderRadius: '50%',
+                    /* KEY CHANGE: Filled black for current, White hole for others */
+                    background: isCurrent ? 'black' : 'white', 
+                    border: `2px solid black`,
+                    boxShadow: isCurrent
+                      ? `0 0 0 ${isMobile ? '3px' : '5px'} rgba(196,168,130,0.2)`
+                      : 'none',
+                    transition: 'all 0.3s ease',
+                    flexShrink: 0,
+                  }}
+                />
               </div>
+
+              {/* Label */}
               <div
                 style={{
-                  ...F(9, isActive ? 500 : 400, isActive ? C.ink : '#999'),
+                  height: labelRowHeight,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  ...F(labelSize, isActive ? 500 : 400, isActive ? C.ink : '#999'),
                   textAlign: 'center',
-                  marginTop: 8,
-                  letterSpacing: 0.5,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  padding: '0 2px',
                 }}
               >
                 {step.label}
               </div>
-              {isCurrent && (
-                <div
-                  style={{
-                    ...F(8, 400, C.tan),
-                    marginTop: 4,
-                    textAlign: 'center',
-                  }}
-                >
-                  {date}
-                </div>
-              )}
+
+              {/* Extra row: date + tag only for current */}
+              <div
+                style={{
+                  height: extraRowHeight,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  gap: isMobile ? 1 : 2,
+                }}
+              >
+                {isCurrent ? (
+                  <>
+                    <div
+                      style={{
+                        ...F(dateSize, 400, C.tan),
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {date}
+                    </div>
+                    <div
+                      style={{
+                        background: C.gold,
+                        color: C.ink,
+                        ...F(tagSize, 700),
+                        letterSpacing: 0.3,
+                        textTransform: 'uppercase',
+                        padding: tagPadding,
+                        borderRadius: 8,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Current
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ height: isMobile ? 32 : 44 }} />
+                )}
+              </div>
             </div>
           );
         })}
@@ -1604,62 +1675,202 @@ const ProductCardSkeleton = () => {
 import { Link } from "react-router-dom";
 import { useSettings } from "../context/SettingsContext";
 import { C, F, Ser } from "../designTokens";
-import { PAGE_X } from "../responsive";
+import { PAGE_X, useIsMobile } from "../responsive";
 
 const toSlug = (name = "") =>
   name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 export default function MegaMenu({ open, onClose }) {
-  // Same categories the rest of the app already loaded — no second request.
   const { categories, loading } = useSettings();
+  const isMobile = useIsMobile();
 
   if (!open) return null;
 
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 998 }} />
-      <div style={{
-        position: "absolute", top: "100%", left: 0, right: 0,
-        background: C.white, borderBottom: `0.5px solid ${C.border}`,
-        boxShadow: "0 12px 30px rgba(0,0,0,0.08)", zIndex: 999,
-        padding: `28px ${PAGE_X} 32px`,
-      }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexWrap: "wrap", gap: 'clamp(24px, 5vw, 64px)', alignItems: "flex-start" }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 18 }}>Categories</div>
+      <div
+        style={{
+          position: "absolute",
+          top: "100%",
+          left: 0,
+          right: 0,
+          background: C.white,
+          borderBottom: `0.5px solid ${C.border}`,
+          boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+          zIndex: 999,
+          padding: `28px ${PAGE_X} 32px`,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1100,
+            margin: "0 auto",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "clamp(24px, 5vw, 48px)",
+            alignItems: "flex-start",
+          }}
+        >
+          {/* Categories with images */}
+          <div style={{ flex: 1, minWidth: 280 }}>
+            <div
+              style={{
+                ...F(9, 500, C.tan),
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                marginBottom: 18,
+              }}
+            >
+              Categories
+            </div>
 
             {loading ? (
               <div style={{ ...F(11, 400, "#999") }}>Loading…</div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px,1fr))", columnGap: 32, rowGap: 12 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                  gap: "clamp(12px, 1.5vw, 20px)",
+                }}
+              >
                 {categories.map((cat) => (
                   <Link
                     key={cat._id || cat.slug}
                     to={`/category/${cat.slug || toSlug(cat.name)}`}
                     onClick={onClose}
-                    style={{ textDecoration: "none", ...F(12, 400, C.ink), lineHeight: 2, transition: "color 0.15s", whiteSpace: "nowrap" }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = C.brandRed}
-                    onMouseLeave={(e) => e.currentTarget.style.color = C.ink}
+                    style={{
+                      textDecoration: "none",
+                      color: C.ink,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      textAlign: "center",
+                      transition: "transform 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                      const img = e.currentTarget.querySelector("img");
+                      if (img) img.style.transform = "scale(1.05)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      const img = e.currentTarget.querySelector("img");
+                      if (img) img.style.transform = "scale(1)";
+                    }}
                   >
-                    {cat.name}
+                    <div
+                      style={{
+                        width: "100%",
+                        aspectRatio: "3/4",
+                        background: C.cream,
+                        overflow: "hidden",
+                        borderRadius: 8,
+                        marginBottom: 8,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                      }}
+                    >
+                      {cat.imageUrl ? (
+                        <img
+                          src={cat.imageUrl}
+                          alt={cat.name}
+                          loading="lazy"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            objectPosition: "top center",
+                            transition: "transform 0.4s ease",
+                            display: "block",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            ...F(10, 400, "#999"),
+                          }}
+                        >
+                          {cat.name}
+                        </div>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        ...F(10, 500, C.ink),
+                        letterSpacing: 0.3,
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {cat.name}
+                    </div>
                   </Link>
                 ))}
               </div>
             )}
           </div>
 
-          <div style={{ width: 240, borderLeft: `0.5px solid ${C.border}`, paddingLeft: 32 }}>
-            <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>New Collection</div>
-            <div style={{ ...Ser(22, 300, C.ink), lineHeight: 1.2, marginBottom: 10 }}>Spring 2026</div>
-            <div style={{ ...F(11, 400, "#888"), marginBottom: 18 }}>Discover the latest abayas crafted with care.</div>
+          {/* Featured / New Collection panel */}
+          <div
+            style={{
+              width: isMobile ? "100%" : 220,
+              borderLeft: isMobile ? "none" : `0.5px solid ${C.border}`,
+              paddingLeft: isMobile ? 0 : 28,
+              marginTop: isMobile ? 20 : 0,
+              paddingTop: isMobile ? 20 : 0,
+              borderTop: isMobile ? `0.5px solid ${C.border}` : "none",
+            }}
+          >
+            <div
+              style={{
+                ...F(9, 500, C.tan),
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                marginBottom: 8,
+              }}
+            >
+              New Collection
+            </div>
+            <div
+              style={{
+                ...Ser(22, 300, C.ink),
+                lineHeight: 1.2,
+                marginBottom: 10,
+              }}
+            >
+              Spring 2026
+            </div>
+            <div
+              style={{
+                ...F(11, 400, "#888"),
+                marginBottom: 18,
+                lineHeight: 1.6,
+              }}
+            >
+              Discover the latest abayas crafted with care.
+            </div>
             <Link
               to="/category/all"
               onClick={onClose}
               style={{
-                background: C.brandRed, color: C.cream, padding: "10px 20px",
-                textDecoration: "none", ...F(10, 500, C.cream), letterSpacing: 2,
-                textTransform: "uppercase", display: "inline-block", textAlign: "center",
+                background: C.brandRed,
+                color: C.cream,
+                padding: "10px 20px",
+                textDecoration: "none",
+                ...F(10, 500, C.cream),
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                display: "inline-block",
+                textAlign: "center",
+                transition: "opacity 0.2s ease",
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = 0.85)}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = 1)}
             >
               Shop Now
             </Link>
@@ -1667,6 +1878,201 @@ export default function MegaMenu({ open, onClose }) {
         </div>
       </div>
     </>
+  );
+}FILE: src/components/TrackOrderModal.jsx
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../api';
+import { useAuth } from '../context/AuthContext';
+import { C, F, Ser } from '../designTokens';
+
+const STATUS_META = {
+  placed:    { label: 'Placed',    fg: '#5B5048', bg: '#EFEAE2' },
+  confirmed: { label: 'Confirmed', fg: '#5C0A14', bg: '#F4E3E5' },
+  shipped:   { label: 'Shipped',   fg: '#8A3A00', bg: '#FBE7D8' },
+  delivered: { label: 'Delivered', fg: '#1B5E20', bg: '#E3F0E4' },
+  cancelled: { label: 'Cancelled', fg: '#C62828', bg: '#FBE3E3' },
+};
+
+export default function TrackOrderModal({ onClose }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    api.get('/orders')
+      .then((res) => setOrders(res.data || []))
+      .catch(() => setOrders([]))
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  const handleOrderClick = (orderNumber) => {
+    onClose();
+    navigate(`/tracking?order=${orderNumber}`);
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1200,
+        padding: '20px',
+        backdropFilter: 'blur(4px)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: C.white,
+          maxWidth: 480,
+          width: '100%',
+          maxHeight: '80vh',
+          padding: '28px 24px',
+          borderRadius: 12,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 16,
+            background: 'none',
+            border: 'none',
+            fontSize: 24,
+            color: '#888',
+            cursor: 'pointer',
+          }}
+        >
+          ×
+        </button>
+
+        <div style={{ ...Ser(28, 300, C.ink), marginBottom: 4 }}>My Orders</div>
+        <div style={{ ...F(11, 400, '#888'), marginBottom: 20 }}>
+          {user ? 'Click any order to track it.' : 'Sign in to see your orders.'}
+        </div>
+
+        {!user ? (
+          <div style={{ textAlign: 'center', padding: 20 }}>
+            <div style={{ ...F(13, 400, '#888'), marginBottom: 16 }}>
+              Please sign in to view your orders.
+            </div>
+            <button
+              onClick={() => {
+                onClose();
+                navigate('/signin');
+              }}
+              style={{
+                background: C.brandRed,
+                color: C.cream,
+                border: 'none',
+                padding: '10px 24px',
+                ...F(11, 500, C.cream),
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                borderRadius: 8,
+              }}
+            >
+              Sign In
+            </button>
+          </div>
+        ) : loading ? (
+          <div style={{ textAlign: 'center', padding: 20, ...F(13, 400, '#888') }}>
+            Loading...
+          </div>
+        ) : orders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 20 }}>
+            <div style={{ ...F(13, 400, '#888'), marginBottom: 12 }}>
+              You haven't placed any orders yet.
+            </div>
+            <button
+              onClick={() => {
+                onClose();
+                navigate('/');
+              }}
+              style={{
+                background: C.brandRed,
+                color: C.cream,
+                border: 'none',
+                padding: '10px 24px',
+                ...F(11, 500, C.cream),
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                borderRadius: 8,
+              }}
+            >
+              Start Shopping
+            </button>
+          </div>
+        ) : (
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {orders.map((order) => {
+              const st = STATUS_META[order.status] || STATUS_META.placed;
+              return (
+                <div
+                  key={order._id}
+                  onClick={() => handleOrderClick(order.orderNumber)}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 14px',
+                    borderBottom: `0.5px solid ${C.border}`,
+                    cursor: 'pointer',
+                    transition: 'background 0.15s',
+                    borderRadius: 6,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = C.cream)}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ ...F(12, 500, C.ink) }}>
+                      {order.orderNumber}
+                    </div>
+                    <div style={{ ...F(10, 400, '#888') }}>
+                      {new Date(order.createdAt).toLocaleDateString()} · {order.items?.length || 0} items
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                    <span
+                      style={{
+                        background: st.bg,
+                        color: st.fg,
+                        padding: '3px 10px',
+                        borderRadius: 4,
+                        ...F(9, 500),
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {st.label}
+                    </span>
+                    <span style={{ ...F(10, 400, '#888') }}>→</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }FILE: src/components/ProtectedRoute.jsx
 import { Navigate, useLocation } from "react-router-dom";
@@ -1733,6 +2139,7 @@ import { C, F, Ser } from "../designTokens";
 import { PAGE_X, useIsMobile } from "../responsive";
 import MegaMenu from "./MegaMenu";
 import ModernSearch from "./ModernSearch";
+import TrackOrderModal from "./TrackOrderModal";
 
 const toSlug = (name = "") =>
   name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -1741,6 +2148,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [trackModalOpen, setTrackModalOpen] = useState(false);
   const { user } = useAuth();
   const { cartCount } = useCart();
   const { categories } = useSettings();
@@ -1752,13 +2160,11 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Stop the page scrolling behind the open drawer.
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
 
-  // Close the drawer if the window grows back to desktop.
   useEffect(() => {
     if (!isMobile) setDrawerOpen(false);
   }, [isMobile]);
@@ -1794,8 +2200,17 @@ export default function Navbar() {
         </Link>
 
         {isMobile ? (
-          /* Phone: cart stays visible, everything else moves into the drawer */
-          <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
+          /* Phone: FAV, TRACK, CART always visible */
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <Link to="/favourites" style={linkStyle}>
+              FAV
+            </Link>
+            <span
+              onClick={() => setTrackModalOpen(true)}
+              style={{ ...F(10, 400, C.ink), cursor: "pointer", letterSpacing: 1 }}
+            >
+              TRACK
+            </span>
             <Link to="/cart" style={{ position: "relative", ...linkStyle }}>
               CART
               {cartCount > 0 && (
@@ -1824,7 +2239,7 @@ export default function Navbar() {
             </button>
           </div>
         ) : (
-          /* Desktop: unchanged */
+          /* Desktop: full nav */
           <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
             <div
               onClick={() => setMegaOpen(!megaOpen)}
@@ -1833,6 +2248,12 @@ export default function Navbar() {
               SHOP
             </div>
             <ModernSearch />
+            <span
+              onClick={() => setTrackModalOpen(true)}
+              style={{ ...F(10, 400, C.ink), cursor: "pointer", letterSpacing: 1 }}
+            >
+              TRACK
+            </span>
             <Link to="/favourites" style={linkStyle}>FAV</Link>
             <Link to="/cart" style={{ position: "relative", ...linkStyle }}>
               CART
@@ -1851,10 +2272,8 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* Desktop mega menu only — the drawer covers phones */}
       {!isMobile && <MegaMenu open={megaOpen} onClose={() => setMegaOpen(false)} />}
 
-      {/* Mobile drawer */}
       {isMobile && drawerOpen && (
         <>
           <div
@@ -1957,6 +2376,11 @@ export default function Navbar() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Track Order Modal */}
+      {trackModalOpen && (
+        <TrackOrderModal onClose={() => setTrackModalOpen(false)} />
       )}
     </div>
   );
@@ -3266,8 +3690,10 @@ import api from '../api';
 import Layout from '../components/Layout';
 import OrderStatusTimeline from '../components/OrderStatusTimeline';
 import { C, F, Ser } from '../designTokens';
+import { PAGE_X, useIsMobile } from '../responsive';
 
 export default function TrackingPage() {
+  const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   const orderNumber = searchParams.get('order') || 'ABR-00000000';
   const [order, setOrder] = useState(null);
@@ -3307,19 +3733,35 @@ export default function TrackingPage() {
   return (
     <Layout>
       <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, padding: '32px 64px' }}>
-          <div onClick={() => window.history.back()} style={{ ...F(10, 400, '#888'), cursor: 'pointer', marginBottom: 18 }}>
+        <div style={{ flex: 1, padding: `clamp(24px, 4vw, 32px) ${PAGE_X}` }}>
+          {/* Back button */}
+          <div
+            onClick={() => window.history.back()}
+            style={{ ...F(10, 400, '#888'), cursor: 'pointer', marginBottom: isMobile ? 12 : 18 }}
+          >
             ← Back to My Orders
           </div>
-          <div style={{ ...Ser(28, 300, C.ink), marginBottom: 4 }}>Order {order.orderNumber}</div>
-          <div style={{ ...F(11, 400, '#888'), marginBottom: 32 }}>
+
+          {/* Order number and date */}
+          <div style={{ ...Ser(28, 300, C.ink), fontSize: isMobile ? 22 : 28, marginBottom: 4 }}>
+            Order {order.orderNumber}
+          </div>
+          <div style={{ ...F(11, 400, '#888'), marginBottom: isMobile ? 20 : 32 }}>
             Placed {new Date(order.createdAt).toLocaleDateString()}
           </div>
 
           {/* Timeline */}
           <OrderStatusTimeline status={order.status} createdAt={order.createdAt} />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, marginTop: 32 }}>
+          {/* Grid: Summary + Address */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              gap: isMobile ? 24 : 48,
+              marginTop: isMobile ? 20 : 32,
+            }}
+          >
             {/* Order Summary */}
             <div>
               <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: 'uppercase', marginBottom: 20 }}>
