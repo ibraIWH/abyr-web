@@ -115,6 +115,82 @@ const ToastItem = ({ toast, onClose }) => {
       <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
     </div>
   );
+};FILE: src/context/SettingsContext.jsx
+import { createContext, useContext, useEffect, useState } from 'react';
+import api from '../api';
+
+const SettingsContext = createContext();
+
+export const useSettings = () => {
+  const ctx = useContext(SettingsContext);
+  if (!ctx) throw new Error('useSettings must be used inside SettingsProvider');
+  return ctx;
+};
+
+export const SettingsProvider = ({ children }) => {
+  const [settings, setSettings] = useState({
+    hero: null,
+    newsText: '',
+    newsActive: true,
+    offers: [],
+    categories: [],
+    collections: [], // kept as an alias of categories so older code keeps working
+    loading: true,
+  });
+
+  // Retry a request a couple of times before giving up.
+  // Two things cause transient failures here: the browser changing network
+  // mid-request (ERR_NETWORK_CHANGED), and Render's free tier taking ~30s to
+  // wake up. Both fix themselves on a second attempt a moment later.
+  const getWithRetry = async (path, tries = 3, delay = 1500) => {
+    for (let attempt = 1; attempt <= tries; attempt++) {
+      try {
+        return await api.get(path);
+      } catch (err) {
+        if (attempt === tries) throw err;
+        await new Promise((r) => setTimeout(r, delay * attempt)); // 1.5s, then 3s
+      }
+    }
+  };
+
+  const fetchAll = async () => {
+    // allSettled instead of all: if one endpoint fails (or is still waking up),
+    // the others still load. With Promise.all a single failure blanked the
+    // whole site — hero, banner and categories all at once.
+    const [settingsRes, offersRes, categoriesRes] = await Promise.allSettled([
+      getWithRetry('/settings'),
+      getWithRetry('/offers'),
+      getWithRetry('/categories'),
+    ]);
+
+    const settingsData = settingsRes.status === 'fulfilled' ? settingsRes.value.data : {};
+    const offers = offersRes.status === 'fulfilled' ? offersRes.value.data : [];
+    const categories = categoriesRes.status === 'fulfilled' ? categoriesRes.value.data : [];
+
+    if (categoriesRes.status === 'rejected') {
+      console.error('Failed to load categories:', categoriesRes.reason?.message);
+    }
+
+    setSettings({
+      hero: settingsData.hero || null,
+      newsText: settingsData.newsText || '',
+      newsActive: settingsData.newsActive ?? true,
+      offers,
+      categories,
+      collections: categories,
+      loading: false,
+    });
+  };
+
+  useEffect(() => {
+    fetchAll();
+  }, []);
+
+  return (
+    <SettingsContext.Provider value={settings}>
+      {children}
+    </SettingsContext.Provider>
+  );
 };FILE: src/context/CartContext.jsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import api from '../api'; // your central Axios instance
@@ -202,44 +278,91 @@ export const CartProvider = ({ children }) => {
     </CartContext.Provider>
   );
 };FILE: src/index.css
-/* Global Reset – removes default browser margins */
+/* ============================
+   Global Reset
+   ============================ */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+/* ============================
+   ZOOM PREVENTION — FIXED (Scrolling works!)
+   ============================ */
+
+/* 1. Block pinch-zoom on mobile */
+html, body {
+  touch-action: pan-y !important;
+  -webkit-text-size-adjust: 100%;
+  -webkit-touch-callout: none;
+  height: 100%;
+  width: 100%;
+}
+
+/* 2. Prevent double-tap zoom on interactive elements */
+button, a, img, .clickable, [role="button"],
+.product-card, .product-image, .product-link {
+  touch-action: manipulation !important;
+}
+
+/* 3. Force all elements to block zoom */
+* {
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 4. Desktop: Reset CSS zoom to 100% */
+html {
+  zoom: 1 !important;
+  -moz-transform: scale(1) !important;
+  -moz-transform-origin: 0 0 !important;
+}
+
+/* ============================
+   Animations
+   ============================ */
 @keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 @keyframes pulse {
-  0% {
-    opacity: 0.6;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0.6;
-  }
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
-/* Toast animation */
 .slide-in {
   animation: slideIn 0.3s ease forwards;
 }
 
-/* Skeleton pulse */
 .pulse {
   animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* ============================
+   Accessibility & Scrollbar
+   ============================ */
+:focus-visible {
+  outline: 2px solid #C4A882;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F5F0E8;
+}
+::-webkit-scrollbar-thumb {
+  background: #C4A882;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8B7355;
 }FILE: src/styles/responsive.css
 /* src/styles/responsive.css */
 @media (max-width: 768px) {
@@ -549,14 +672,14 @@ export default function RecentlyViewed() {
         </div>
         <h2 style={{ ...Ser(28, 300, C.ink) }}>You Recently Looked At</h2>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px,1fr))", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(200px, 46%), 1fr))", gap: "clamp(10px, 2.5vw, 16px)" }}>
         {products.map((prod) => (
           <Link
             key={prod._id}
             to={`/product/${prod._id}`}
             style={{ textDecoration: "none", color: C.ink }}
           >
-            <div style={{ background: "transparent", height: 410, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+            <div style={{ background: "transparent", height: "clamp(240px, 62vw, 410px)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
               {prod.imageUrl ? (
                 <img src={prod.imageUrl} alt={prod.name} style={{ maxHeight: "100%", maxWidth: "100%" }} />
               ) : (
@@ -594,10 +717,10 @@ const reviews = [
 
 export default function TestimonialsSection() {
   return (
-    <div style={{ background: C.linen, padding: "52px 64px", textAlign: "center" }}>
+    <div style={{ background: C.linen, padding: "clamp(36px, 6vw, 52px) clamp(16px, 5vw, 64px)", textAlign: "center" }}>
       <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>Reviews</div>
       <h2 style={{ ...Ser(30, 300, C.ink), marginBottom: 36 }}>What Our Customers Say</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px,1fr))", gap: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))", gap: 20 }}>
         {reviews.map((review, i) => (
           <div key={i} style={{ background: C.white, padding: "28px 24px", textAlign: "left", border: `0.5px solid ${C.border}` }}>
             <div style={{ display: "flex", gap: 3, marginBottom: 14 }}>
@@ -760,8 +883,13 @@ export default function QuickViewModal({ product, onClose }) {
 }FILE: src/components/FilterSidebar.jsx
 import { useState } from "react";
 import { C, F } from "../designTokens";
+import { useIsMobile } from "../responsive";
 
 export default function FilterSidebar({ onFilter, products }) {
+  const isMobile = useIsMobile();
+  // On a phone the filters start collapsed — otherwise they fill the whole
+  // screen and the customer has to scroll past them to reach any product.
+  const [open, setOpen] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 500]);
   const [selectedColors, setSelectedColors] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState([]);
@@ -785,13 +913,45 @@ export default function FilterSidebar({ onFilter, products }) {
   };
 
   return (
-    <div style={{ padding: "20px", borderRight: `0.5px solid ${C.border}`, width: 220, flexShrink: 0 }}>
-      <div style={{ ...F(11, 500, C.ink), marginBottom: 20 }}>Filters</div>
+    <div
+      style={{
+        padding: isMobile ? "12px clamp(16px, 4vw, 32px)" : "20px",
+        borderRight: isMobile ? "none" : `0.5px solid ${C.border}`,
+        borderBottom: isMobile ? `0.5px solid ${C.border}` : "none",
+        width: isMobile ? "100%" : 220,
+        flexShrink: 0,
+      }}
+    >
+      {isMobile ? (
+        <button
+          onClick={() => setOpen(!open)}
+          style={{
+            ...F(11, 500, C.ink),
+            width: "100%",
+            background: "none",
+            border: `0.5px solid ${C.border}`,
+            padding: "12px 14px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            cursor: "pointer",
+            letterSpacing: 1,
+            textTransform: "uppercase",
+          }}
+        >
+          Filters
+          <span style={{ fontSize: 13 }}>{open ? "−" : "+"}</span>
+        </button>
+      ) : (
+        <div style={{ ...F(11, 500, C.ink), marginBottom: 20 }}>Filters</div>
+      )}
+
+      <div style={{ display: isMobile && !open ? "none" : "block", marginTop: isMobile ? 18 : 0 }}>
 
       {/* Price */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>Price</div>
-        <input type="range" min="0" max="500" value={priceRange[1]} onChange={(e) => setPriceRange([0, Number(e.target.value)])} style={{ width: "100%" }} />
+        <input type="range" min="0" max="500" value={priceRange[1]} onChange={(e) => setPriceRange([0, Number(e.target.value)])} style={{ width: "100%", accentColor: C.brandRed }} />
         <div style={{ display: "flex", justifyContent: "space-between", ...F(9, 400, "#888") }}>
           <span>SAR 0</span>
           <span>SAR {priceRange[1]}</span>
@@ -848,6 +1008,7 @@ export default function FilterSidebar({ onFilter, products }) {
       >
         Apply
       </button>
+      </div>
     </div>
   );
 }FILE: src/components/Breadcrumb.jsx
@@ -874,12 +1035,19 @@ export default function Breadcrumb({ items }) {
     </div>
   );
 }FILE: src/components/AnnouncementBar.jsx
-import { C, F } from "../designTokens";
+import { useSettings } from '../context/SettingsContext';
+import { C, F } from '../designTokens';
 
 export default function AnnouncementBar() {
+  const { newsText, newsActive } = useSettings();
+
+  // If news is disabled by admin, hide the bar completely
+  if (!newsActive) return null;
+
+  const message = newsText || 'FREE DELIVERY OVER SAR 200 · NEW COLLECTION · EASY RETURNS';
+
   return (
     <>
-      {/* Scrolling animation keyframes */}
       <style>{`
         @keyframes scrollAnnouncement {
           0% { transform: translateX(100%); }
@@ -892,71 +1060,109 @@ export default function AnnouncementBar() {
         }
       `}</style>
 
-      <div style={{
-        background: C.ink,            // ← ink black for a more editorial look
-        color: C.cream,
-        overflow: "hidden",
-        whiteSpace: "nowrap",
-        position: "sticky",
-        top: 0,
-        zIndex: 1001,
-        padding: "8px 0",
-      }}>
+      <div
+        style={{
+          background: C.ink,
+          color: C.cream,
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+          position: 'sticky',
+          top: 0,
+          zIndex: 1001,
+          padding: '8px 0',
+        }}
+      >
         <div className="announcement-track" style={{ ...F(10, 400, C.cream), letterSpacing: 1.5 }}>
-          FREE DELIVERY OVER SAR 200 &nbsp;·&nbsp; NEW COLLECTION &nbsp;·&nbsp; EASY RETURNS &nbsp;·&nbsp;
-          FREE DELIVERY OVER SAR 200 &nbsp;·&nbsp; NEW COLLECTION &nbsp;·&nbsp; EASY RETURNS &nbsp;·&nbsp;
-          FREE DELIVERY OVER SAR 200 &nbsp;·&nbsp; NEW COLLECTION &nbsp;·&nbsp; EASY RETURNS
+          {message} &nbsp;·&nbsp; {message} &nbsp;·&nbsp; {message}
         </div>
       </div>
     </>
   );
 }FILE: src/components/CategoryNav.jsx
 import { Link } from "react-router-dom";
+import { useSettings } from "../context/SettingsContext";
 import { C, F } from "../designTokens";
+import { PAGE_X, useIsMobile } from "../responsive";
 
-const categories = [
-  { label: "Abaya", slug: "abaya" },
-  { label: "Jalabiya", slug: "jalabiya" },
-  { label: "Niqab", slug: "niqab" },
-  { label: "Bisht", slug: "bisht" },
-  { label: "Gloves", slug: "gloves" },
-  { label: "School", slug: "school" },
-];
+const toSlug = (name = "") =>
+  name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 export default function CategoryNav() {
-  return (
-    <div
-      style={{
-        background: C.white,
-        borderBottom: `0.5px solid ${C.border}`,
-        position: "sticky",
-        top: 80,           // height of the main navbar
-        zIndex: 900,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 24,
-        padding: "10px 0",
-      }}
-    >
-    
+  // No fetch of its own — the app already loads categories once in
+  // SettingsContext. Fetching here as well meant a second request and a
+  // second, differently-timed loading state, which is what caused the
+  // menu to change in front of the customer a few seconds after load.
+  const { categories, loading } = useSettings();
+  const isMobile = useIsMobile();
 
-      {/* Category links */}
+  const barStyle = {
+    background: C.white,
+    borderBottom: `0.5px solid ${C.border}`,
+    position: "sticky",
+    top: 80,
+    zIndex: 900,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: isMobile ? "flex-start" : "center",
+    gap: 'clamp(14px, 3vw, 24px)',
+    padding: `10px ${PAGE_X}`,
+    overflowX: 'auto',
+    flexWrap: isMobile ? "nowrap" : "wrap",
+    minHeight: 41, // reserved height so the page never jumps when items arrive
+    // Fades the last item out at the right edge, which signals the row scrolls
+    // instead of leaving a word chopped in half.
+    ...(isMobile
+      ? {
+          WebkitMaskImage: 'linear-gradient(to right, #000 82%, transparent 100%)',
+          maskImage: 'linear-gradient(to right, #000 82%, transparent 100%)',
+          scrollbarWidth: 'none',
+        }
+      : {}),
+  };
+
+  // While loading, show neutral placeholders instead of an out-of-date list.
+  if (loading) {
+    return (
+      <div style={barStyle}>
+        {[64, 78, 56, 70, 60, 52].map((w, i) => (
+          <span
+            key={i}
+            style={{
+              display: "inline-block",
+              width: w,
+              height: 10,
+              borderRadius: 3,
+              background: C.border,
+              opacity: 0.7,
+            }}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (!categories.length) return null;
+
+  return (
+    <div style={barStyle}>
       {categories.map((cat) => (
         <Link
-          key={cat.slug}
-          to={`/category/${cat.slug}`}
+          key={cat._id || cat.slug}
+          to={`/category/${cat.slug || toSlug(cat.name)}`}
           style={{
             ...F(10, 400, C.ink),
             letterSpacing: 1.5,
             textTransform: "uppercase",
             textDecoration: "none",
+            whiteSpace: "nowrap",
             borderBottom: "1.5px solid transparent",
             paddingBottom: 2,
             transition: "border-color 0.15s",
           }}
+          onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = C.brandRed)}
+          onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = "transparent")}
         >
-          {cat.label}
+          {cat.name}
         </Link>
       ))}
     </div>
@@ -966,7 +1172,7 @@ import { C, F, Ser } from "../designTokens";
 
 export default function Footer() {
   return (
-    <div style={{ background: C.ink, padding: "48px 64px 28px", color: C.cream }}>
+    <div style={{ background: C.ink, padding: "clamp(36px, 6vw, 48px) clamp(16px, 5vw, 64px) 28px", color: C.cream }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px,1fr))", gap: 32, marginBottom: 40 }}>
         {/* Brand */}
         <div>
@@ -1028,7 +1234,7 @@ export default function NewsletterSection() {
 
   if (submitted) {
     return (
-      <div style={{ background: C.cream, padding: "48px 64px", textAlign: "center" }}>
+      <div style={{ background: C.cream, padding: "clamp(36px, 6vw, 48px) clamp(16px, 5vw, 64px)", textAlign: "center" }}>
         <h2 style={Ser(28, 300, C.ink)}>Thank You</h2>
         <p style={F(13, 400, "#888")}>You're on the list. We'll keep you posted.</p>
       </div>
@@ -1036,7 +1242,7 @@ export default function NewsletterSection() {
   }
 
   return (
-    <div style={{ background: C.brandRed, padding: "48px 64px", textAlign: "center" }}>
+    <div style={{ background: C.brandRed, padding: "clamp(36px, 6vw, 48px) clamp(16px, 5vw, 64px)", textAlign: "center" }}>
       <h2 style={Ser(28, 300, C.cream)}>Join the Abyr List</h2>
       <p style={{ ...F(13, 400, C.cream), opacity: 0.8, marginBottom: 24 }}>
         Be the first to know about new collections and exclusive offers.
@@ -1099,7 +1305,338 @@ export default function EmptyState({ title, message, showShopButton = true }) {
       )}
     </div>
   );
-}FILE: src/components/ProductCardSkeleton.jsx
+}FILE: src/components/OrderStatusTimeline.jsx
+import { C, F } from '../designTokens';
+import { useIsMobile } from '../responsive';
+
+const STATUS_STEPS = [
+  { key: 'placed', label: 'Placed' },
+  { key: 'confirmed', label: 'Confirmed' },
+  { key: 'shipped', label: 'Shipped' },
+  { key: 'delivered', label: 'Delivered' },
+];
+
+export default function OrderStatusTimeline({ status, createdAt }) {
+  const isMobile = useIsMobile();
+  const currentIndex = STATUS_STEPS.findIndex((s) => s.key === status);
+  const date = new Date(createdAt).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  const dotSize = isMobile ? 18 : 24;
+  const labelSize = isMobile ? 8 : 10;
+  const dateSize = isMobile ? 7 : 9;
+  const tagSize = isMobile ? 6 : 7;
+  const tagPadding = isMobile ? '1px 6px' : '2px 10px';
+  const progress = (currentIndex / (STATUS_STEPS.length - 1)) * 100;
+
+  const dotRowHeight = isMobile ? 36 : 48;
+  const labelRowHeight = isMobile ? 20 : 28;
+  const extraRowHeight = isMobile ? 36 : 48;
+  const stepHeight = dotRowHeight + labelRowHeight + extraRowHeight;
+
+  return (
+    <div style={{ padding: `${isMobile ? '12px' : '20px'} 0`, width: '100%' }}>
+      <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between' }}>
+        
+        {/* Line — Black */}
+        <div
+          style={{
+            position: 'absolute',
+            top: dotRowHeight / 2,
+            left: '4%',
+            right: '4%',
+            height: 2,
+            background: 'black', 
+            zIndex: 0,
+          }}
+        >
+          <div
+            style={{
+              width: `${progress}%`,
+              height: '100%',
+              background: 'black', 
+              transition: 'width 0.6s ease',
+            }}
+          />
+        </div>
+
+        {STATUS_STEPS.map((step, index) => {
+          const isActive = index <= currentIndex;
+          const isCurrent = index === currentIndex;
+
+          return (
+            <div
+              key={step.key}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                width: '25%',
+                position: 'relative',
+                zIndex: 1,
+                height: stepHeight,
+                justifyContent: 'flex-start',
+              }}
+            >
+              {/* Dot — White hole for past/future, Filled black for current */}
+              <div
+                style={{
+                  height: dotRowHeight,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                }}
+              >
+                <div
+                  style={{
+                    width: dotSize,
+                    height: dotSize,
+                    borderRadius: '50%',
+                    /* KEY CHANGE: Filled black for current, White hole for others */
+                    background: isCurrent ? 'black' : 'white', 
+                    border: `2px solid black`,
+                    boxShadow: isCurrent
+                      ? `0 0 0 ${isMobile ? '3px' : '5px'} rgba(196,168,130,0.2)`
+                      : 'none',
+                    transition: 'all 0.3s ease',
+                    flexShrink: 0,
+                  }}
+                />
+              </div>
+
+              {/* Label */}
+              <div
+                style={{
+                  height: labelRowHeight,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  ...F(labelSize, isActive ? 500 : 400, isActive ? C.ink : '#999'),
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  padding: '0 2px',
+                }}
+              >
+                {step.label}
+              </div>
+
+              {/* Extra row: date + tag only for current */}
+              <div
+                style={{
+                  height: extraRowHeight,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  gap: isMobile ? 1 : 2,
+                }}
+              >
+                {isCurrent ? (
+                  <>
+                    <div
+                      style={{
+                        ...F(dateSize, 400, C.tan),
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {date}
+                    </div>
+                    <div
+                      style={{
+                        background: C.gold,
+                        color: C.ink,
+                        ...F(tagSize, 700),
+                        letterSpacing: 0.3,
+                        textTransform: 'uppercase',
+                        padding: tagPadding,
+                        borderRadius: 8,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Current
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ height: isMobile ? 32 : 44 }} />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}FILE: src/components/ChangePasswordModal.jsx
+import { useState } from 'react';
+import api from '../api';
+import { useToast } from '../context/ToastContext';
+import { C, F } from '../designTokens';
+
+export default function ChangePasswordModal({ onClose }) {
+  const { addToast } = useToast();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.put('/auth/password', { currentPassword, newPassword });
+      addToast('Password updated successfully', 'success');
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '20px',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: C.white,
+          maxWidth: 420,
+          width: '100%',
+          padding: '28px',
+          border: `0.5px solid ${C.border}`,
+          borderRadius: 8,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 style={{ ...F(18, 500, C.ink), marginBottom: 8 }}>Change Password</h2>
+        <p style={{ ...F(12, 400, '#888'), marginBottom: 20 }}>Update your account password</p>
+
+        {error && (
+          <div style={{ background: '#FFEBEE', color: C.red, padding: '8px 12px', marginBottom: 16, ...F(11, 400) }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ ...F(10, 500, C.tan), letterSpacing: 1, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+              Current Password
+            </label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Enter current password"
+              required
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ ...F(10, 500, C.tan), letterSpacing: 1, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+              New Password
+            </label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Min. 8 characters"
+              required
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ ...F(10, 500, C.tan), letterSpacing: 1, textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter new password"
+              required
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                flex: 1,
+                padding: '12px',
+                background: loading ? '#888' : C.brandRed,
+                color: C.cream,
+                border: 'none',
+                ...F(11, 500, C.cream),
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {loading ? 'Updating...' : 'Update Password'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: '12px 20px',
+                background: 'transparent',
+                border: `0.5px solid ${C.border}`,
+                ...F(11, 400, '#888'),
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+const inputStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  border: `0.5px solid ${C.border}`,
+  borderRadius: 4,
+  ...F(13, 400, C.ink),
+  outline: 'none',
+  boxSizing: 'border-box',
+};FILE: src/components/ProductCardSkeleton.jsx
 const ProductCardSkeleton = () => {
     return (
       <div style={{
@@ -1136,56 +1673,204 @@ const ProductCardSkeleton = () => {
   
   export default ProductCardSkeleton;FILE: src/components/MegaMenu.jsx
 import { Link } from "react-router-dom";
+import { useSettings } from "../context/SettingsContext";
 import { C, F, Ser } from "../designTokens";
+import { PAGE_X, useIsMobile } from "../responsive";
 
-const categories = [
-  "Summer Discounts", "Trendy Abayas", "Winter Abayas", "Black Abayas",
-  "Daily Abayas", "Work Abayas", "Event Abayas", "Bisht",
-  "Jalabiya", "Niqab", "Gloves", "School",
-];
+const toSlug = (name = "") =>
+  name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 export default function MegaMenu({ open, onClose }) {
+  const { categories, loading } = useSettings();
+  const isMobile = useIsMobile();
+
   if (!open) return null;
 
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 998 }} />
-      <div style={{
-        position: "absolute", top: "100%", left: 0, right: 0,
-        background: C.white, borderBottom: `0.5px solid ${C.border}`,
-        boxShadow: "0 12px 30px rgba(0,0,0,0.08)", zIndex: 999,
-        padding: "28px 64px 32px",
-      }}>
-        <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", gap: 64, alignItems: "flex-start" }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 18 }}>Categories</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px,1fr))", columnGap: 32, rowGap: 12 }}>
-              {categories.map((cat) => (
-                <Link
-                  key={cat}
-                  to={`/category/${cat.toLowerCase().replace(/\s+/g, "-")}`}
-                  onClick={onClose}
-                  style={{ textDecoration: "none", ...F(12, 400, C.ink), lineHeight: 2, transition: "color 0.15s", whiteSpace: "nowrap" }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = C.brandRed}
-                  onMouseLeave={(e) => e.currentTarget.style.color = C.ink}
-                >
-                  {cat}
-                </Link>
-              ))}
+      <div
+        style={{
+          position: "absolute",
+          top: "100%",
+          left: 0,
+          right: 0,
+          background: C.white,
+          borderBottom: `0.5px solid ${C.border}`,
+          boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+          zIndex: 999,
+          padding: `28px ${PAGE_X} 32px`,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1100,
+            margin: "0 auto",
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "clamp(24px, 5vw, 48px)",
+            alignItems: "flex-start",
+          }}
+        >
+          {/* Categories with images */}
+          <div style={{ flex: 1, minWidth: 280 }}>
+            <div
+              style={{
+                ...F(9, 500, C.tan),
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                marginBottom: 18,
+              }}
+            >
+              Categories
             </div>
+
+            {loading ? (
+              <div style={{ ...F(11, 400, "#999") }}>Loading…</div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                  gap: "clamp(12px, 1.5vw, 20px)",
+                }}
+              >
+                {categories.map((cat) => (
+                  <Link
+                    key={cat._id || cat.slug}
+                    to={`/category/${cat.slug || toSlug(cat.name)}`}
+                    onClick={onClose}
+                    style={{
+                      textDecoration: "none",
+                      color: C.ink,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      textAlign: "center",
+                      transition: "transform 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                      const img = e.currentTarget.querySelector("img");
+                      if (img) img.style.transform = "scale(1.05)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      const img = e.currentTarget.querySelector("img");
+                      if (img) img.style.transform = "scale(1)";
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "100%",
+                        aspectRatio: "3/4",
+                        background: C.cream,
+                        overflow: "hidden",
+                        borderRadius: 8,
+                        marginBottom: 8,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                      }}
+                    >
+                      {cat.imageUrl ? (
+                        <img
+                          src={cat.imageUrl}
+                          alt={cat.name}
+                          loading="lazy"
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            objectPosition: "top center",
+                            transition: "transform 0.4s ease",
+                            display: "block",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            ...F(10, 400, "#999"),
+                          }}
+                        >
+                          {cat.name}
+                        </div>
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        ...F(10, 500, C.ink),
+                        letterSpacing: 0.3,
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {cat.name}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
-          <div style={{ width: 240, borderLeft: `0.5px solid ${C.border}`, paddingLeft: 32 }}>
-            <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>New Collection</div>
-            <div style={{ ...Ser(22, 300, C.ink), lineHeight: 1.2, marginBottom: 10 }}>Spring 2026</div>
-            <div style={{ ...F(11, 400, "#888"), marginBottom: 18 }}>Discover the latest abayas crafted with care.</div>
+
+          {/* Featured / New Collection panel */}
+          <div
+            style={{
+              width: isMobile ? "100%" : 220,
+              borderLeft: isMobile ? "none" : `0.5px solid ${C.border}`,
+              paddingLeft: isMobile ? 0 : 28,
+              marginTop: isMobile ? 20 : 0,
+              paddingTop: isMobile ? 20 : 0,
+              borderTop: isMobile ? `0.5px solid ${C.border}` : "none",
+            }}
+          >
+            <div
+              style={{
+                ...F(9, 500, C.tan),
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                marginBottom: 8,
+              }}
+            >
+              New Collection
+            </div>
+            <div
+              style={{
+                ...Ser(22, 300, C.ink),
+                lineHeight: 1.2,
+                marginBottom: 10,
+              }}
+            >
+              Spring 2026
+            </div>
+            <div
+              style={{
+                ...F(11, 400, "#888"),
+                marginBottom: 18,
+                lineHeight: 1.6,
+              }}
+            >
+              Discover the latest abayas crafted with care.
+            </div>
             <Link
-              to="/category/new"
+              to="/category/all"
               onClick={onClose}
               style={{
-                background: C.brandRed, color: C.cream, padding: "10px 20px",
-                textDecoration: "none", ...F(10, 500, C.cream), letterSpacing: 2,
-                textTransform: "uppercase", display: "inline-block", textAlign: "center",
+                background: C.brandRed,
+                color: C.cream,
+                padding: "10px 20px",
+                textDecoration: "none",
+                ...F(10, 500, C.cream),
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                display: "inline-block",
+                textAlign: "center",
+                transition: "opacity 0.2s ease",
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = 0.85)}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = 1)}
             >
               Shop Now
             </Link>
@@ -1193,6 +1878,201 @@ export default function MegaMenu({ open, onClose }) {
         </div>
       </div>
     </>
+  );
+}FILE: src/components/TrackOrderModal.jsx
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../api';
+import { useAuth } from '../context/AuthContext';
+import { C, F, Ser } from '../designTokens';
+
+const STATUS_META = {
+  placed:    { label: 'Placed',    fg: '#5B5048', bg: '#EFEAE2' },
+  confirmed: { label: 'Confirmed', fg: '#5C0A14', bg: '#F4E3E5' },
+  shipped:   { label: 'Shipped',   fg: '#8A3A00', bg: '#FBE7D8' },
+  delivered: { label: 'Delivered', fg: '#1B5E20', bg: '#E3F0E4' },
+  cancelled: { label: 'Cancelled', fg: '#C62828', bg: '#FBE3E3' },
+};
+
+export default function TrackOrderModal({ onClose }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    api.get('/orders')
+      .then((res) => setOrders(res.data || []))
+      .catch(() => setOrders([]))
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  const handleOrderClick = (orderNumber) => {
+    onClose();
+    navigate(`/tracking?order=${orderNumber}`);
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1200,
+        padding: '20px',
+        backdropFilter: 'blur(4px)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: C.white,
+          maxWidth: 480,
+          width: '100%',
+          maxHeight: '80vh',
+          padding: '28px 24px',
+          borderRadius: 12,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: 12,
+            right: 16,
+            background: 'none',
+            border: 'none',
+            fontSize: 24,
+            color: '#888',
+            cursor: 'pointer',
+          }}
+        >
+          ×
+        </button>
+
+        <div style={{ ...Ser(28, 300, C.ink), marginBottom: 4 }}>My Orders</div>
+        <div style={{ ...F(11, 400, '#888'), marginBottom: 20 }}>
+          {user ? 'Click any order to track it.' : 'Sign in to see your orders.'}
+        </div>
+
+        {!user ? (
+          <div style={{ textAlign: 'center', padding: 20 }}>
+            <div style={{ ...F(13, 400, '#888'), marginBottom: 16 }}>
+              Please sign in to view your orders.
+            </div>
+            <button
+              onClick={() => {
+                onClose();
+                navigate('/signin');
+              }}
+              style={{
+                background: C.brandRed,
+                color: C.cream,
+                border: 'none',
+                padding: '10px 24px',
+                ...F(11, 500, C.cream),
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                borderRadius: 8,
+              }}
+            >
+              Sign In
+            </button>
+          </div>
+        ) : loading ? (
+          <div style={{ textAlign: 'center', padding: 20, ...F(13, 400, '#888') }}>
+            Loading...
+          </div>
+        ) : orders.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 20 }}>
+            <div style={{ ...F(13, 400, '#888'), marginBottom: 12 }}>
+              You haven't placed any orders yet.
+            </div>
+            <button
+              onClick={() => {
+                onClose();
+                navigate('/');
+              }}
+              style={{
+                background: C.brandRed,
+                color: C.cream,
+                border: 'none',
+                padding: '10px 24px',
+                ...F(11, 500, C.cream),
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                borderRadius: 8,
+              }}
+            >
+              Start Shopping
+            </button>
+          </div>
+        ) : (
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {orders.map((order) => {
+              const st = STATUS_META[order.status] || STATUS_META.placed;
+              return (
+                <div
+                  key={order._id}
+                  onClick={() => handleOrderClick(order.orderNumber)}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 14px',
+                    borderBottom: `0.5px solid ${C.border}`,
+                    cursor: 'pointer',
+                    transition: 'background 0.15s',
+                    borderRadius: 6,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = C.cream)}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ ...F(12, 500, C.ink) }}>
+                      {order.orderNumber}
+                    </div>
+                    <div style={{ ...F(10, 400, '#888') }}>
+                      {new Date(order.createdAt).toLocaleDateString()} · {order.items?.length || 0} items
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                    <span
+                      style={{
+                        background: st.bg,
+                        color: st.fg,
+                        padding: '3px 10px',
+                        borderRadius: 4,
+                        ...F(9, 500),
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {st.label}
+                    </span>
+                    <span style={{ ...F(10, 400, '#888') }}>→</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }FILE: src/components/ProtectedRoute.jsx
 import { Navigate, useLocation } from "react-router-dom";
@@ -1209,21 +2089,70 @@ export default function ProtectedRoute({ children }) {
   }
 
   return children;
+}FILE: src/components/SplashScreen.jsx
+import { C, F, Ser } from '../designTokens';
+
+export default function SplashScreen() {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: C.sand,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+      }}
+    >
+      <div style={{ ...Ser(56, 300, C.brandRed), marginBottom: 12 }}>abyr</div>
+      <div style={{ ...F(10, 300, C.gold), letterSpacing: 4, textTransform: 'uppercase', marginBottom: 32 }}>
+        Modest Fashion
+      </div>
+      <div
+        style={{
+          width: 32,
+          height: 32,
+          border: `2px solid ${C.border}`,
+          borderTopColor: C.brandRed,
+          borderRadius: '50%',
+          animation: 'spin 0.9s linear infinite',
+        }}
+      />
+      <style>
+        {`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+    </div>
+  );
 }FILE: src/components/Navbar.jsx
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { useSettings } from "../context/SettingsContext";
 import { C, F, Ser } from "../designTokens";
+import { PAGE_X, useIsMobile } from "../responsive";
 import MegaMenu from "./MegaMenu";
 import ModernSearch from "./ModernSearch";
+import TrackOrderModal from "./TrackOrderModal";
+
+const toSlug = (name = "") =>
+  name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const [megaOpen, setMegaOpen] = useState(false);   // ← new state
-  const { user, logout } = useAuth();
+  const [megaOpen, setMegaOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [trackModalOpen, setTrackModalOpen] = useState(false);
+  const { user } = useAuth();
   const { cartCount } = useCart();
-  const navigate = useNavigate();
+  const { categories } = useSettings();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -1231,9 +2160,16 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleSignOut = () => {
-    logout();
-  };
+  useEffect(() => {
+    document.body.style.overflow = drawerOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [drawerOpen]);
+
+  useEffect(() => {
+    if (!isMobile) setDrawerOpen(false);
+  }, [isMobile]);
+
+  const linkStyle = { ...F(10, 400, C.ink), textDecoration: "none" };
 
   return (
     <div
@@ -1242,7 +2178,7 @@ export default function Navbar() {
         top: "28px",
         left: 0,
         width: "100%",
-        zIndex: 1000,
+        zIndex: drawerOpen ? 1200 : 1000,
         transition: "all 0.3s ease",
         background: scrolled ? C.sand : "transparent",
         boxShadow: scrolled ? "0 4px 12px rgba(0,0,0,0.05)" : "none",
@@ -1250,7 +2186,7 @@ export default function Navbar() {
     >
       <div
         style={{
-          padding: "0 48px",
+          padding: `0 ${PAGE_X}`,
           height: 52,
           display: "flex",
           justifyContent: "space-between",
@@ -1259,47 +2195,193 @@ export default function Navbar() {
           margin: "0 auto",
         }}
       >
-        <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
-          <Link to="/" style={{ ...Ser(28, 300, C.ink), textDecoration: "none" }}>
-            abyr
-          </Link>
-        </div>
+        <Link to="/" style={{ ...Ser(28, 300, C.ink), textDecoration: "none" }}>
+          abyr
+        </Link>
 
-        <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
-          {/* SHOP button that toggles the mega menu */}
-          <div
-            onClick={() => setMegaOpen(!megaOpen)}
-            style={{
-              ...F(10, 400, C.ink),
-              cursor: "pointer",
-              letterSpacing: 1,
-            }}
-          >
-            SHOP
+        {isMobile ? (
+          /* Phone: FAV, TRACK, CART always visible */
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+            <Link to="/favourites" style={linkStyle}>
+              FAV
+            </Link>
+            <span
+              onClick={() => setTrackModalOpen(true)}
+              style={{ ...F(10, 400, C.ink), cursor: "pointer", letterSpacing: 1 }}
+            >
+              TRACK
+            </span>
+            <Link to="/cart" style={{ position: "relative", ...linkStyle }}>
+              CART
+              {cartCount > 0 && (
+                <span style={{ fontSize: 9, background: C.brandRed, color: C.cream, borderRadius: "50%", padding: "1px 5px", marginLeft: 4 }}>
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+
+            <button
+              onClick={() => setDrawerOpen(true)}
+              aria-label="Open menu"
+              style={{
+                background: "none",
+                border: "none",
+                padding: 6,
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+              }}
+            >
+              {[0, 1, 2].map((i) => (
+                <span key={i} style={{ display: "block", width: 20, height: 1.5, background: C.ink }} />
+              ))}
+            </button>
           </div>
-          <ModernSearch />
-          <Link to="/favourites" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>FAV</Link>
-          <Link to="/cart" style={{ position: "relative", ...F(10, 400, C.ink), textDecoration: "none" }}>
-            CART
-            {cartCount > 0 && (
-              <span style={{ fontSize: 9, background: C.brandRed, color: C.cream, borderRadius: "50%", padding: "1px 5px", marginLeft: 4 }}>
-                {cartCount}
-              </span>
+        ) : (
+          /* Desktop: full nav */
+          <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
+            <div
+              onClick={() => setMegaOpen(!megaOpen)}
+              style={{ ...F(10, 400, C.ink), cursor: "pointer", letterSpacing: 1 }}
+            >
+              SHOP
+            </div>
+            <ModernSearch />
+            <span
+              onClick={() => setTrackModalOpen(true)}
+              style={{ ...F(10, 400, C.ink), cursor: "pointer", letterSpacing: 1 }}
+            >
+              TRACK
+            </span>
+            <Link to="/favourites" style={linkStyle}>FAV</Link>
+            <Link to="/cart" style={{ position: "relative", ...linkStyle }}>
+              CART
+              {cartCount > 0 && (
+                <span style={{ fontSize: 9, background: C.brandRed, color: C.cream, borderRadius: "50%", padding: "1px 5px", marginLeft: 4 }}>
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+            {user ? (
+              <Link to="/account" style={linkStyle}>{user.name.toUpperCase()}</Link>
+            ) : (
+              <Link to="/signin" style={linkStyle}>SIGN IN</Link>
             )}
-          </Link>
-          {user ? (
-            <>
-              <Link to="/account" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>{user.name.toUpperCase()}</Link>
-               
-            </>
-          ) : (
-            <Link to="/signin" style={{ ...F(10, 400, C.ink), textDecoration: "none" }}>SIGN IN</Link>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* MegaMenu with proper props */}
-      <MegaMenu open={megaOpen} onClose={() => setMegaOpen(false)} />
+      {!isMobile && <MegaMenu open={megaOpen} onClose={() => setMegaOpen(false)} />}
+
+      {isMobile && drawerOpen && (
+        <>
+          <div
+            onClick={() => setDrawerOpen(false)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1100 }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: "min(320px, 85vw)",
+              background: C.sand,
+              zIndex: 1101,
+              display: "flex",
+              flexDirection: "column",
+              padding: "22px 24px",
+              overflowY: "auto",
+              boxShadow: "-8px 0 30px rgba(0,0,0,0.12)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 26 }}>
+              <span style={{ ...Ser(24, 300, C.ink) }}>abyr</span>
+              <button
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Close menu"
+                style={{ background: "none", border: "none", fontSize: 26, lineHeight: 1, cursor: "pointer", color: C.ink }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+              Categories
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", marginBottom: 28 }}>
+              {(categories || []).map((cat) => (
+                <Link
+                  key={cat._id || cat.slug}
+                  to={`/category/${cat.slug || toSlug(cat.name)}`}
+                  onClick={() => setDrawerOpen(false)}
+                  style={{
+                    ...F(13, 400, C.ink),
+                    textDecoration: "none",
+                    padding: "10px 0",
+                    borderBottom: `0.5px solid ${C.border}`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 42,
+                      height: 54,
+                      flexShrink: 0,
+                      background: C.cream,
+                      overflow: "hidden",
+                      display: "block",
+                    }}
+                  >
+                    {cat.imageUrl && (
+                      <img
+                        src={cat.imageUrl}
+                        alt=""
+                        loading="lazy"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "top center",
+                          display: "block",
+                        }}
+                      />
+                    )}
+                  </span>
+                  <span>{cat.name}</span>
+                </Link>
+              ))}
+            </div>
+
+            <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+              Account
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <Link to="/favourites" onClick={() => setDrawerOpen(false)} style={{ ...F(13, 400, C.ink), textDecoration: "none", padding: "12px 0", borderBottom: `0.5px solid ${C.border}` }}>
+                Favourites
+              </Link>
+              <Link to="/cart" onClick={() => setDrawerOpen(false)} style={{ ...F(13, 400, C.ink), textDecoration: "none", padding: "12px 0", borderBottom: `0.5px solid ${C.border}` }}>
+                Cart{cartCount > 0 ? ` (${cartCount})` : ""}
+              </Link>
+              <Link
+                to={user ? "/account" : "/signin"}
+                onClick={() => setDrawerOpen(false)}
+                style={{ ...F(13, 400, C.ink), textDecoration: "none", padding: "12px 0" }}
+              >
+                {user ? user.name : "Sign in"}
+              </Link>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Track Order Modal */}
+      {trackModalOpen && (
+        <TrackOrderModal onClose={() => setTrackModalOpen(false)} />
+      )}
     </div>
   );
 }FILE: src/components/ProductCard.jsx
@@ -1363,7 +2445,31 @@ export default function ProductCard({ product }) {
     addToast("Added to cart", "success");
   };
 
-  const badge = product.stock === 0 ? "SOLD OUT" : product.salePrice ? "SALE" : null;
+  // How much is off, worked out from the two prices the admin already stores.
+  const discountPct =
+    product.salePrice && product.price > 0
+      ? Math.round((1 - product.salePrice / product.price) * 100)
+      : 0;
+
+  // Status badge: stock and price take priority over everything else.
+  // Shows the actual saving ("37% OFF") rather than a vague "SALE",
+  // matching the wording used on the offer cards.
+  const badge =
+    product.stock === 0
+      ? "SOLD OUT"
+      : discountPct > 0
+      ? `${discountPct}% OFF`
+      : product.salePrice
+      ? "SALE"
+      : null;
+
+  // Tag badge: the Best Seller / Selling Fast flag set in the admin.
+  // Shown alongside the status badge so a discounted best seller gets both.
+  const TAGS = {
+    bestSeller: { label: "BEST SELLER", bg: C.gold, fg: C.ink },
+    sellingFast: { label: "SELLING FAST", bg: C.amber, fg: C.cream },
+  };
+  const tag = product.tag && product.tag !== "none" ? TAGS[product.tag] : null;
 
   return (
     <>
@@ -1411,23 +2517,47 @@ export default function ProductCard({ product }) {
               </svg>
             )}
 
-            {/* Badge */}
-            {badge && (
+            {/* Badges — stacked top-left so they never collide with the heart */}
+            {(badge || tag) && (
               <div
                 style={{
                   position: "absolute",
                   top: 8,
                   left: 8,
-                  background: badge === "SOLD OUT" ? C.ink : C.brandRed,
-                  color: C.cream,
-                  padding: "4px 10px",
-                  ...F(8, 500, C.cream),
-                  letterSpacing: 1,
-                  textTransform: "uppercase",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 5,
                   zIndex: 2,
                 }}
               >
-                {badge}
+                {badge && (
+                  <div
+                    style={{
+                      background: badge === "SOLD OUT" ? C.ink : C.brandRed,
+                      padding: "4px 10px",
+                      ...F(8, 500, C.cream),
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {badge}
+                  </div>
+                )}
+
+                {tag && (
+                  <div
+                    style={{
+                      background: tag.bg,
+                      padding: "4px 10px",
+                      ...F(8, 500, tag.fg),
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {tag.label}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1538,6 +2668,141 @@ export default function ProductCard({ product }) {
       )}
     </>
   );
+}FILE: src/components/OrderDetailModal.jsx
+import { C, F, Ser } from '../designTokens';
+
+// Quick status meta (reuse from admin theme, or define here)
+const STATUS_META = {
+  placed:    { label: 'Placed',    fg: '#5B5048', bg: '#EFEAE2' },
+  confirmed: { label: 'Confirmed', fg: '#5C0A14', bg: '#F4E3E5' },
+  shipped:   { label: 'Shipped',   fg: '#8A3A00', bg: '#FBE7D8' },
+  delivered: { label: 'Delivered', fg: '#1B5E20', bg: '#E3F0E4' },
+  cancelled: { label: 'Cancelled', fg: '#C62828', bg: '#FBE3E3' },
+};
+
+export default function OrderDetailModal({ order, onClose }) {
+  if (!order) return null;
+
+  const st = STATUS_META[order.status] || STATUS_META.placed;
+  const subtotal = order.subtotal ?? order.items?.reduce((sum, it) => sum + it.price * it.quantity, 0);
+  const delivery = order.deliveryFee ?? 0;
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '20px',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: C.white,
+          maxWidth: 600,
+          width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          padding: '28px',
+          border: `0.5px solid ${C.border}`,
+          borderRadius: 8,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <div>
+            <div style={{ ...Ser(24, 300, C.ink) }}>Order {order.orderNumber}</div>
+            <div style={{ ...F(11, 400, '#888') }}>
+              {new Date(order.createdAt).toLocaleString()}
+            </div>
+          </div>
+          <span
+            style={{
+              background: st.bg,
+              color: st.fg,
+              padding: '4px 12px',
+              ...F(10, 500),
+              borderRadius: 4,
+              letterSpacing: 1,
+            }}
+          >
+            {st.label}
+          </span>
+        </div>
+
+        {/* Items */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>
+            Items
+          </div>
+          {order.items.map((item, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `0.5px solid ${C.border}` }}>
+              <div>
+                <div style={{ ...F(12, 500, C.ink) }}>{item.name}</div>
+                <div style={{ ...F(10, 400, '#888') }}>
+                  {item.size && `Size ${item.size} · `}Qty {item.quantity}
+                </div>
+              </div>
+              <div style={{ ...F(12, 400, C.ink) }}>SAR {(item.price * item.quantity).toFixed(2)}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Totals */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', ...F(11, 400, '#888') }}>
+            <span>Subtotal</span>
+            <span>SAR {subtotal.toFixed(2)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', ...F(11, 400, '#888') }}>
+            <span>Delivery</span>
+            <span>{delivery === 0 ? 'Free' : `SAR ${delivery.toFixed(2)}`}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: `0.5px solid ${C.border}` }}>
+            <span style={{ ...F(13, 500, C.ink) }}>Total</span>
+            <span style={{ ...Ser(18, 300, C.tan) }}>SAR {order.total.toFixed(2)}</span>
+          </div>
+        </div>
+
+        {/* Shipping Address */}
+        {order.shippingAddress && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: 'uppercase', marginBottom: 4 }}>
+              Delivery Address
+            </div>
+            <div style={{ ...F(12, 400, '#444'), lineHeight: 1.6 }}>
+              {order.shippingAddress.name}<br />
+              {order.shippingAddress.line1}<br />
+              {order.shippingAddress.city}
+              {order.shippingAddress.phone && <><br />{order.shippingAddress.phone}</>}
+            </div>
+          </div>
+        )}
+
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          style={{
+            width: '100%',
+            padding: '10px',
+            background: C.border,
+            border: 'none',
+            ...F(11, 400, C.ink),
+            cursor: 'pointer',
+            marginTop: 8,
+          }}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
 }FILE: src/designTokens.js
 export const C = {
   brandRed: "#5C0A14",
@@ -1582,8 +2847,9 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { SettingsProvider } from './context/SettingsContext';
 import { ToastProvider } from './context/ToastContext';
-import './index.css';
+import './index.css'; // ← MUST be here
 import './styles/responsive.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -1593,14 +2859,63 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <AuthProvider>
           <CartProvider>
             <ToastProvider>
-              <App />
+              <SettingsProvider>
+                <App />
+              </SettingsProvider>
             </ToastProvider>
           </CartProvider>
         </AuthProvider>
       </BrowserRouter>
     </HelmetProvider>
   </React.StrictMode>
-);FILE: src/App.jsx
+);FILE: src/responsive.js
+import { useEffect, useState } from 'react';
+
+/**
+ * Responsive helpers for a codebase built on inline styles.
+ *
+ * Inline styles cannot contain media queries — there is no way to write
+ * "64px on desktop, 16px on phones" inside a style object. Two ways round it:
+ *
+ * 1. clamp() — plain CSS, works fine inline, no JavaScript, no re-renders.
+ *    Use it for anything that should scale smoothly: padding, font size,
+ *    card widths. This handles most of the work.
+ *
+ * 2. useMediaQuery — only for structural changes clamp can't express,
+ *    like swapping a row for a column or hiding a desktop menu.
+ */
+
+// Page gutter: 16px on a small phone, growing with the viewport, capped at 64px.
+export const PAGE_X = 'clamp(16px, 5vw, 64px)';
+
+// Vertical rhythm that tightens on small screens.
+export const SECTION_Y = 'clamp(28px, 5vw, 56px)';
+
+/** Standard horizontal page padding with a chosen vertical value. */
+export const pagePad = (y = 20) => `${y}px ${PAGE_X}`;
+
+/** Fluid font size: shrinks on phones, never past min or max. */
+export const fluid = (min, max, vw = 4) => `clamp(${min}px, ${vw}vw, ${max}px)`;
+
+export function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(query).matches : false
+  );
+
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const onChange = (e) => setMatches(e.matches);
+    setMatches(mql.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, [query]);
+
+  return matches;
+}
+
+export const useIsMobile = () => useMediaQuery('(max-width: 640px)');
+export const useIsTablet = () => useMediaQuery('(min-width: 641px) and (max-width: 1024px)');FILE: src/App.jsx
+import { useEffect } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -1618,19 +2933,86 @@ import SignUpPage from './pages/SignUpPage';
 import SizeGuidePage from './pages/SizeGuidePage';
 import TrackingPage from './pages/TrackingPage';
 
-// Guest can still view cart
 import CartPage from './pages/CartPage';
 
-// Protected Pages (must be logged in)
 import AccountPage from './pages/AccountPage';
 import AddressesPage from './pages/AddressesPage';
-import CheckoutPage from './pages/CheckoutPage'; // now protected
+import CheckoutPage from './pages/CheckoutPage';
 import FavouritesPage from './pages/FavouritesPage';
 import OrdersPage from './pages/OrdersPage';
 import PaymentPage from './pages/PaymentPage';
 import SettingsPage from './pages/SettingsPage';
 
 function App() {
+  // ============================================================
+  // ZOOM PREVENTION — FULL (Mobile + Desktop)
+  // ============================================================
+  useEffect(() => {
+    // ----- MOBILE: Block pinch-zoom -----
+    const preventZoom = (e) => {
+      if (e.type === 'gesturestart' || e.type === 'gesturechange' || e.type === 'gestureend') {
+        e.preventDefault();
+        return false;
+      }
+      if (e.touches && e.touches.length > 1) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    document.addEventListener('gesturestart', preventZoom, { passive: false });
+    document.addEventListener('gesturechange', preventZoom, { passive: false });
+    document.addEventListener('gestureend', preventZoom, { passive: false });
+    document.addEventListener('touchmove', preventZoom, { passive: false });
+
+    // ----- MOBILE: Block double-tap zoom -----
+    let lastTouchEnd = 0;
+    const handleTouchEnd = (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    };
+    document.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    // ----- DESKTOP: Block Ctrl+Plus, Ctrl+Minus, Ctrl+0 -----
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '0')) {
+        e.preventDefault();
+        return false;
+      }
+      if (e.metaKey && (e.key === '+' || e.key === '-' || e.key === '0')) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    // ----- DESKTOP: Block mouse wheel zoom (Ctrl+Scroll) -----
+    // Normal scrolling works — only blocks when Ctrl is held
+    const handleWheel = (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    document.addEventListener('wheel', handleWheel, { passive: false });
+
+    // ----- Cleanup -----
+    return () => {
+      document.removeEventListener('gesturestart', preventZoom);
+      document.removeEventListener('gesturechange', preventZoom);
+      document.removeEventListener('gestureend', preventZoom);
+      document.removeEventListener('touchmove', preventZoom);
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
   return (
     <Routes>
       {/* Public */}
@@ -1647,10 +3029,8 @@ function App() {
       <Route path="/tracking" element={<TrackingPage />} />
       <Route path="/size-guide" element={<SizeGuidePage />} />
 
-      {/* Cart is still publicly viewable */}
       <Route path="/cart" element={<CartPage />} />
 
-      {/* Protected routes */}
       <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
       <Route path="/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
       <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
@@ -1659,7 +3039,6 @@ function App() {
       <Route path="/addresses" element={<ProtectedRoute><AddressesPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
 
-      {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
@@ -1790,13 +3169,13 @@ export default function ProductPage() {
             { label: product.name },
           ]}
         />
-        <div style={{ padding: "28px 64px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48 }}>
+        <div style={{ padding: "28px clamp(16px, 5vw, 64px)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: "clamp(20px, 4vw, 48px)" }}>
           {/* Product Images */}
           <div>
             <div
               style={{
                 background: "transparent",
-                height: 600,
+                height: "clamp(380px, 78vw, 600px)",
                 overflow: "hidden",
                 position: "relative",
                 cursor: "zoom-in",
@@ -2124,10 +3503,12 @@ export default function ProductPage() {
               background: "rgba(250,250,248,0.97)",
               backdropFilter: "blur(10px)",
               borderTop: `0.5px solid ${C.border}`,
-              padding: "12px 64px",
+              padding: "12px clamp(14px, 5vw, 64px)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
               zIndex: 100,
             }}
           >
@@ -2193,16 +3574,21 @@ export default function ProductPage() {
   );
 }FILE: src/pages/CategoryPage.jsx
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import api from "../api";
 import CategoryNav from "../components/CategoryNav";
 import FilterSidebar from "../components/FilterSidebar";
 import Layout from "../components/Layout";
 import ProductCard from "../components/ProductCard";
 import { C, F, Ser } from "../designTokens";
+import { useIsMobile } from "../responsive";
 
 export default function CategoryPage() {
+  const isMobile = useIsMobile();
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
+  const tag = searchParams.get("tag");     // e.g. ?tag=bestSeller
+  const sale = searchParams.get("sale");   // ?sale=true
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2211,12 +3597,27 @@ export default function CategoryPage() {
   useEffect(() => {
     api.get("/products", { params: { category: slug } })
       .then((res) => {
-        setProducts(res.data);
-        setFilteredProducts(res.data);
+        // Narrow the list when the home page links here with a filter.
+        let list = res.data;
+        if (tag) list = list.filter((p) => p.tag === tag);
+        if (sale === "true") {
+          list = list.filter(
+            (p) => p.salePrice != null && p.salePrice > 0 && p.salePrice < p.price
+          );
+        }
+        setProducts(list);
+        setFilteredProducts(list);
       })
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, tag, sale]);
+
+  // Title reflects the filter rather than the raw slug.
+  const heading =
+    tag === "bestSeller" ? "Best Sellers"
+    : tag === "sellingFast" ? "Selling Fast"
+    : sale === "true" ? "On Sale"
+    : slug;
 
   const handleSort = (order) => {
     setSortBy(order);
@@ -2233,16 +3634,16 @@ export default function CategoryPage() {
         {/* CategoryNav – no longer sticky, scrolls with the page */}
         <CategoryNav />
 
-        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", flex: 1, overflow: isMobile ? "visible" : "hidden" }}>
           <FilterSidebar
             products={products}
             onFilter={(filtered) => setFilteredProducts(filtered)}
           />
-          <div style={{ flex: 1, overflowY: "auto", padding: "28px 32px" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "28px clamp(16px, 4vw, 32px)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
                 <h1 style={{ ...Ser(28, 300, C.ink), textTransform: "capitalize", marginBottom: 4 }}>
-                  {slug}
+                  {heading}
                 </h1>
                 <div style={{ ...F(11, 400, "#888") }}>{filteredProducts.length} items</div>
               </div>
@@ -2270,7 +3671,7 @@ export default function CategoryPage() {
                 No products found with these filters.
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))", gap: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(220px, 46%), 1fr))", gap: "clamp(10px, 2.5vw, 16px)" }}>
                 {filteredProducts.map((product) => (
                   <ProductCard key={product._id} product={product} />
                 ))}
@@ -2283,27 +3684,22 @@ export default function CategoryPage() {
     </Layout>
   );
 }FILE: src/pages/TrackingPage.jsx
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import api from "../api";
-import Layout from "../components/Layout";
-import { C, F, Ser } from "../designTokens";
-
-const statusSteps = [
-  { key: "placed",     label: "Order Placed", time: "" },
-  { key: "confirmed",  label: "Confirmed",    time: "" },
-  { key: "shipped",    label: "Shipped",      time: "" },
-  { key: "delivered",  label: "Delivered",    time: "" },
-];
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import api from '../api';
+import Layout from '../components/Layout';
+import OrderStatusTimeline from '../components/OrderStatusTimeline';
+import { C, F, Ser } from '../designTokens';
+import { PAGE_X, useIsMobile } from '../responsive';
 
 export default function TrackingPage() {
+  const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
-  const orderNumber = searchParams.get("order") || "ABR-00000000";
+  const orderNumber = searchParams.get('order') || 'ABR-00000000';
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // NEW: use the dedicated tracking endpoint
     api.get(`/orders/track/${orderNumber}`)
       .then((res) => setOrder(res.data))
       .catch((err) => console.error(err))
@@ -2313,9 +3709,9 @@ export default function TrackingPage() {
   if (loading) {
     return (
       <Layout>
-        <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
-            <span style={{ ...F(14, 400, "#888") }}>Loading order…</span>
+        <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+            <span style={{ ...F(14, 400, '#888') }}>Loading order…</span>
           </div>
         </div>
       </Layout>
@@ -2325,141 +3721,118 @@ export default function TrackingPage() {
   if (!order) {
     return (
       <Layout>
-        <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
-            <span style={{ ...F(14, 400, "#888") }}>Order not found</span>
+        <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+            <span style={{ ...F(14, 400, '#888') }}>Order not found</span>
           </div>
         </div>
       </Layout>
     );
   }
 
-  const currentStepIndex = statusSteps.findIndex((s) => s.key === order.status);
-
   return (
     <Layout>
-      <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, padding: "32px 64px" }}>
-          <div onClick={() => window.history.back()} style={{ ...F(10, 400, "#888"), cursor: "pointer", marginBottom: 18 }}>
+      <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, padding: `clamp(24px, 4vw, 32px) ${PAGE_X}` }}>
+          {/* Back button */}
+          <div
+            onClick={() => window.history.back()}
+            style={{ ...F(10, 400, '#888'), cursor: 'pointer', marginBottom: isMobile ? 12 : 18 }}
+          >
             ← Back to My Orders
           </div>
-          <div style={{ ...Ser(28, 300, C.ink), marginBottom: 4 }}>Order {order.orderNumber}</div>
-          <div style={{ ...F(11, 400, "#888"), marginBottom: 32 }}>
+
+          {/* Order number and date */}
+          <div style={{ ...Ser(28, 300, C.ink), fontSize: isMobile ? 22 : 28, marginBottom: 4 }}>
+            Order {order.orderNumber}
+          </div>
+          <div style={{ ...F(11, 400, '#888'), marginBottom: isMobile ? 20 : 32 }}>
             Placed {new Date(order.createdAt).toLocaleDateString()}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48 }}>
-            {/* Timeline */}
-            <div>
-              <div style={{ ...Cap(C.tan), marginBottom: 20 }}>Delivery Status</div>
-              {statusSteps.map((step, i) => (
-                <div key={step.key} style={{ display: "flex", gap: 16, marginBottom: i < statusSteps.length - 1 ? 24 : 0 }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <div
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: "50%",
-                        background: i <= currentStepIndex ? C.brandRed : "#E8E8E4",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {i <= currentStepIndex && (
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="3">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </div>
-                    {i < statusSteps.length - 1 && (
-                      <div
-                        style={{
-                          width: 1,
-                          height: 34,
-                          background: i < currentStepIndex ? C.brandRed : "#E8E8E4",
-                          margin: "3px 0",
-                        }}
-                      />
-                    )}
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        ...F(11, i <= currentStepIndex ? 500 : 400, i <= currentStepIndex ? C.ink : "#AAA"),
-                        marginBottom: 3,
-                      }}
-                    >
-                      {step.label}
-                    </div>
-                    <div style={{ ...F(9, 400, "#888") }}>
-                      {i <= currentStepIndex ? new Date(order.createdAt).toLocaleDateString() : "—"}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
 
+          {/* Timeline */}
+          <OrderStatusTimeline status={order.status} createdAt={order.createdAt} />
+
+          {/* Grid: Summary + Address */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              gap: isMobile ? 24 : 48,
+              marginTop: isMobile ? 20 : 32,
+            }}
+          >
             {/* Order Summary */}
             <div>
-              <div style={{ ...Cap(C.tan), marginBottom: 20 }}>Order Summary</div>
-              <div style={{ background: C.linen, padding: "16px" }}>
-                {/* Items */}
-                <div style={{ marginBottom: 16 }}>
-                  {order.items.map((item, idx) => (
-                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                      <span style={{ ...F(10, 400, "#888") }}>{item.name} × {item.quantity}</span>
-                      <span style={{ ...F(10, 400, C.ink) }}>
-                        SAR {(item.price * item.quantity).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ height: 1, background: "#DDD", margin: "14px 0" }} />
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ ...F(10, 400, "#888") }}>Subtotal</span>
+              <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: 'uppercase', marginBottom: 20 }}>
+                Order Summary
+              </div>
+              <div style={{ background: C.cream, padding: '16px', borderRadius: 8 }}>
+                {order.items.map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ ...F(10, 400, '#888') }}>{item.name} × {item.quantity}</span>
+                    <span style={{ ...F(10, 400, C.ink) }}>
+                      SAR {(item.price * item.quantity).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+                <div style={{ height: 1, background: '#DDD', margin: '14px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ ...F(10, 400, '#888') }}>Subtotal</span>
                   <span style={{ ...F(10, 400, C.ink) }}>SAR {order.subtotal.toFixed(2)}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ ...F(10, 400, "#888") }}>Delivery</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ ...F(10, 400, '#888') }}>Delivery</span>
                   <span style={{ ...F(10, 400, order.deliveryFee === 0 ? C.green : C.ink) }}>
-                    {order.deliveryFee === 0 ? "Free" : `SAR ${order.deliveryFee.toFixed(2)}`}
+                    {order.deliveryFee === 0 ? 'Free' : `SAR ${order.deliveryFee.toFixed(2)}`}
                   </span>
                 </div>
-                <div style={{ height: 1, background: "#DDD", margin: "14px 0" }} />
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <div style={{ height: 1, background: '#DDD', margin: '14px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ ...F(12, 500, C.ink) }}>Total</span>
                   <span style={{ ...Ser(16, 300, C.tan) }}>SAR {order.total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
+
+            {/* Shipping Address */}
+            {order.shippingAddress && (
+              <div>
+                <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: 'uppercase', marginBottom: 20 }}>
+                  Delivery Address
+                </div>
+                <div style={{ background: C.white, padding: '16px', border: `0.5px solid ${C.border}`, borderRadius: 8 }}>
+                  <div style={{ ...F(12, 500, C.ink) }}>{order.shippingAddress.name}</div>
+                  <div style={{ ...F(11, 400, '#888'), lineHeight: 1.6, marginTop: 4 }}>
+                    {order.shippingAddress.line1}<br />
+                    {order.shippingAddress.city}
+                  </div>
+                  {order.shippingAddress.phone && (
+                    <div style={{ ...F(11, 400, '#888'), marginTop: 4 }}>{order.shippingAddress.phone}</div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </Layout>
   );
-}
-
-const Cap = (c = "#8B7355") => ({
-  fontFamily: "'DM Sans', sans-serif",
-  fontSize: 9,
-  color: c,
-  letterSpacing: 2,
-  textTransform: "uppercase",
-});FILE: src/pages/AccountPage.jsx
+}FILE: src/pages/AccountPage.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../api";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
+import { useIsMobile } from "../responsive";
 import AddressesPage from "./AddressesPage";
 import FavouritesPage from "./FavouritesPage";
 import OrdersPage from "./OrdersPage";
 import SettingsPage from "./SettingsPage";
 
 export default function AccountPage() {
+  const isMobile = useIsMobile();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("account");
@@ -2503,7 +3876,7 @@ export default function AccountPage() {
   return (
     <Layout>
       <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "28px 64px", display: "grid", gridTemplateColumns: "220px 1fr", gap: 48 }}>
+        <div style={{ padding: "28px clamp(16px, 5vw, 64px)", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "220px 1fr", gap: "clamp(24px, 4vw, 48px)" }}>
           {/* Sidebar */}
           <div style={{ borderRight: `0.5px solid ${C.border}`, paddingRight: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, paddingBottom: 20, borderBottom: `0.5px solid ${C.border}` }}>
@@ -2599,118 +3972,522 @@ export default function AccountPage() {
     </Layout>
   );
 }FILE: src/pages/HomePage.jsx
-import { useEffect, useState } from "react";
-import api from "../api";
-import CategoryNav from "../components/CategoryNav";
-import Layout from "../components/Layout"; // ← THIS WAS MISSING
-import NewsletterSection from "../components/NewsletterSection";
-import ProductCard from "../components/ProductCard";
-import RecentlyViewed from "../components/RecentlyViewed";
-import TestimonialsSection from "../components/TestimonialsSection";
-import { C, F, Ser } from "../designTokens";
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import api from '../api';
+import CategoryNav from '../components/CategoryNav';
+import Layout from '../components/Layout';
+import NewsletterSection from '../components/NewsletterSection';
+import ProductCard from '../components/ProductCard';
+import RecentlyViewed from '../components/RecentlyViewed';
+import TestimonialsSection from '../components/TestimonialsSection';
+import { useSettings } from '../context/SettingsContext';
+import { C, F, Ser } from '../designTokens';
+import { fluid, PAGE_X, pagePad, useIsMobile } from '../responsive';
+// Centred "Show All" link used under each row.
+function ShowAll({ to }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'clamp(24px, 4vw, 40px)' }}>
+      <Link
+        to={to}
+        style={{
+          ...F(11, 500, C.cream),
+          background: C.ink,
+          letterSpacing: 2,
+          textTransform: 'uppercase',
+          padding: '16px 48px',
+          textDecoration: 'none',
+          display: 'inline-block',
+          transition: 'opacity 0.2s ease',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = 0.85)}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = 1)}
+      >
+        Show All
+      </Link>
+    </div>
+  );
+}
 
 export default function HomePage() {
+  const isMobile = useIsMobile();
+  const { hero, offers, categories } = useSettings();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Products flagged "Best Seller" in the admin.
+  const bestSellers = products.filter((p) => p.tag === 'bestSeller');
+
+  // Products the admin has put a sale price on. Newest first, since the
+  // products endpoint already sorts by createdAt descending.
+  const discounted = products.filter(
+    (p) => p.salePrice != null && p.salePrice > 0 && p.salePrice < p.price
+  );
+
+
   useEffect(() => {
-    api.get("/products")
+    api.get('/products')
       .then((res) => setProducts(res.data))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
   }, []);
 
+  const h = hero || {
+    eyebrow: 'NEW COLLECTION · SUMMER 2026',
+    title: 'abyr',
+    subtitle: 'Handcrafted abayas designed for the modern woman. Free delivery over SAR 200.',
+    imageUrl: '',
+    ctaText: 'SHOP NOW',
+    ctaLink: '/category/all',
+  };
+
   return (
     <Layout>
-      <div
-        style={{
-          background: C.sand,
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
+      <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {/* Hero */}
         <div
           style={{
-            background: `linear-gradient(135deg, ${C.brandRed}, ${C.brandRed})`,
-            padding: "52px 64px",
+            position: 'relative',
+            minHeight: 'clamp(320px, 52vw, 420px)',
+            background: C.brandRed,
+            display: 'flex',
+            alignItems: 'flex-end',
+            padding: `clamp(28px, 5vw, 40px) ${PAGE_X} clamp(36px, 6vw, 60px)`,
             color: C.cream,
+            overflow: 'hidden',
           }}
         >
-          <div style={{ maxWidth: 600 }}>
-            <div
+          {h.imageUrl && (
+            <img
+              src={h.imageUrl}
+              alt="Hero"
               style={{
-                ...F(10, 300, C.gold),
-                letterSpacing: 4,
-                marginBottom: 16,
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: isMobile ? 'cover' : 'contain',
+                objectPosition: isMobile ? 'center 20%' : 'right',
+                opacity: isMobile ? 1 : 0.9,
               }}
-            >
-              NEW COLLECTION · SPRING 2026
+            />
+          )}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: isMobile
+                ? 'linear-gradient(to top, rgba(92,10,20,0.94) 0%, rgba(92,10,20,0.86) 28%, rgba(92,10,20,0.55) 62%, rgba(92,10,20,0.35) 100%)'
+                : 'linear-gradient(135deg, rgba(92,10,20,0.7), rgba(92,10,20,0.3))',
+            }}
+          />
+          <div style={{ position: 'relative', zIndex: 1, maxWidth: isMobile ? '100%' : 600 }}>
+            <div style={{ ...F(10, 300, C.gold), letterSpacing: isMobile ? 2 : 4, marginBottom: 16 }}>
+              {h.eyebrow}
             </div>
-            <div style={{ ...Ser(48, 300, C.cream) }}>abyr</div>
-            <div
-              style={{
-                ...F(12, 300, "rgba(255,255,255,0.4)"),
-                lineHeight: 1.9,
-                margin: "12px 0 32px",
-              }}
-            >
-              Handcrafted abayas designed for the modern woman. Free delivery over
-              SAR 200.
+            <div style={{ ...Ser(48, 300, C.cream), fontSize: fluid(34, 48, 7) }}>{h.title}</div>
+            <div style={{ ...F(12, 300, 'rgba(255,255,255,0.85)'), lineHeight: isMobile ? 1.6 : 1.9, margin: isMobile ? '10px 0 24px' : '12px 0 32px' }}>
+              {h.subtitle}
             </div>
-            <div
+            <Link
+              to={h.ctaLink || '/category/all'}
               style={{
                 ...F(11, 500, C.ink),
                 background: C.gold,
-                padding: "13px 28px",
-                display: "inline-block",
-                cursor: "pointer",
+                padding: '13px 28px',
+                display: 'inline-block',
+                cursor: 'pointer',
+                textDecoration: 'none',
               }}
             >
-              SHOP NOW
-            </div>
+              {h.ctaText}
+            </Link>
           </div>
         </div>
 
         <CategoryNav />
 
-        {/* Products grid */}
-        <div style={{ padding: "40px 64px" }}>
-          <h2 style={{ ...Ser(32, 300, C.ink), marginBottom: 28 }}>
-            New Arrivals
-          </h2>
-          {loading ? (
+        {/* Offers — split card: photo on the left fading into a black panel
+            on the right, in a horizontal scroll row.
+            Sizes: 460px card width, 230px photo width, 260px card height. */}
+        {offers && offers.length > 0 && (
+          <div style={{ padding: pagePad(20) }}>
+            <h2 style={{ ...Ser(28, 300, C.ink), fontSize: fluid(22, 28, 5), marginBottom: 16 }}>Offers</h2>
             <div
               style={{
-                textAlign: "center",
-                padding: 40,
-                ...F(14, 400, "#888"),
+                display: 'flex',
+                gap: 18,
+                overflowX: 'auto',
+                paddingBottom: 8,
+                scrollSnapType: 'x mandatory',
+                WebkitOverflowScrolling: 'touch',
               }}
             >
-              Loading...
-            </div>
-          ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-                gap: 20,
-              }}
-            >
-              {products.map((product) => (
-                <ProductCard key={product._id} product={product} />
+              {offers.map((offer) => (
+                <Link
+                  key={offer._id}
+                  to={offer.link || '#'}
+                  style={{
+                    flex: isMobile ? '0 0 86vw' : '0 0 460px',
+                    scrollSnapAlign: 'start',
+                    display: 'flex',
+                    minHeight: isMobile ? 220 : 260,
+                    overflow: 'hidden',
+                    background: C.ink,
+                    boxShadow: '0 2px 14px rgba(0,0,0,0.08)',
+                    textDecoration: 'none',
+                    transition: 'transform 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-3px)';
+                    const img = e.currentTarget.querySelector('img');
+                    if (img) img.style.transform = 'scale(1.04)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    const img = e.currentTarget.querySelector('img');
+                    if (img) img.style.transform = 'scale(1)';
+                  }}
+                >
+                  {/* Photo side */}
+                  <div
+                    style={{
+                      flex: isMobile ? '0 0 44%' : '0 0 230px',
+                      position: 'relative',
+                      background: C.cream,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {offer.imageUrl ? (
+                      <img
+                        src={offer.imageUrl}
+                        alt={offer.title}
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          objectPosition: 'top center',
+                          display: 'block',
+                          transition: 'transform 0.6s ease',
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          ...F(10, 400, '#999'),
+                          textAlign: 'center',
+                          padding: 8,
+                        }}
+                      >
+                        {offer.title}
+                      </div>
+                    )}
+
+                    {/* Many-stop fade so the photo dissolves into the panel
+                        without visible banding. */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background:
+                          'linear-gradient(to right,' +
+                          ' rgba(26,26,26,0) 0%,' +
+                          ' rgba(26,26,26,0.015) 18%,' +
+                          ' rgba(26,26,26,0.05) 30%,' +
+                          ' rgba(26,26,26,0.10) 40%,' +
+                          ' rgba(26,26,26,0.18) 49%,' +
+                          ' rgba(26,26,26,0.28) 57%,' +
+                          ' rgba(26,26,26,0.40) 64%,' +
+                          ' rgba(26,26,26,0.53) 71%,' +
+                          ' rgba(26,26,26,0.66) 78%,' +
+                          ' rgba(26,26,26,0.78) 84%,' +
+                          ' rgba(26,26,26,0.88) 89%,' +
+                          ' rgba(26,26,26,0.95) 94%,' +
+                          ' rgba(26,26,26,1) 100%)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  </div>
+
+                  {/* Text panel — badge top, title middle, CTA pinned to the foot */}
+                  <div
+                    style={{
+                      flex: 1,
+                      padding: isMobile ? '20px 18px' : '24px 26px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    {offer.badgeText ? (
+                      <span
+                        style={{
+                          background: C.gold,
+                          color: C.ink,
+                          ...F(9, 500),
+                          letterSpacing: 1.2,
+                          padding: '5px 11px',
+                          alignSelf: 'flex-start',
+                        }}
+                      >
+                        {offer.badgeText}
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+
+                    <div>
+                      <div style={{ ...Ser(30, 300, C.cream), fontSize: fluid(22, 30, 4), lineHeight: 1.1 }}>
+                        {offer.title}
+                      </div>
+                      {offer.subtitle && (
+                        <div style={{ ...F(11, 400, 'rgba(255,255,255,0.72)'), lineHeight: 1.6, marginTop: 8 }}>
+                          {offer.subtitle}
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        ...F(9, 500, C.gold),
+                        letterSpacing: 1.6,
+                        textTransform: 'uppercase',
+                        borderTop: '1px solid rgba(196,168,130,0.28)',
+                        paddingTop: 12,
+                      }}
+                    >
+                      Shop now →
+                    </div>
+                  </div>
+                </Link>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Categories section – NARROW DESIGN like mobile app cards */}
+        {categories && categories.length > 0 && (
+          <div style={{ padding: pagePad(20) }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ ...Ser(28, 300, C.ink), fontSize: fluid(22, 28, 5) }}>Shop by Category</h2>
+              <Link
+                to="/category/all"
+                style={{ ...F(10, 400, C.tan), textDecoration: 'none', letterSpacing: 1 }}
+              >
+                View All →
+              </Link>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                gap: 12,
+                overflowX: 'auto',
+                paddingBottom: 8,
+                scrollSnapType: 'x mandatory',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              {categories.map((col) => (
+                <Link
+                  key={col._id}
+                  to={`/category/${col.slug}`}
+                  style={{
+                    flex: isMobile ? '0 0 52vw' : '0 0 200px',
+                    textDecoration: 'none',
+                    color: C.ink,
+                    scrollSnapAlign: 'start',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'relative',
+                      aspectRatio: '3/4',
+                      overflow: 'hidden',
+                      background: C.cream,
+                      boxShadow: '0 2px 14px rgba(0,0,0,0.08)',
+                    }}
+                    onMouseEnter={(e) => {
+                      const img = e.currentTarget.querySelector('img');
+                      if (img) img.style.transform = 'scale(1.06)';
+                    }}
+                    onMouseLeave={(e) => {
+                      const img = e.currentTarget.querySelector('img');
+                      if (img) img.style.transform = 'scale(1)';
+                    }}
+                  >
+                    {col.imageUrl ? (
+                      <img
+                        src={col.imageUrl}
+                        alt={col.name}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          objectPosition: 'top center',
+                          display: 'block',
+                          transition: 'transform 0.7s ease',
+                        }}
+                      />
+                    ) : (
+                      <div style={{ width: '100%', height: '100%', background: C.cream }} />
+                    )}
+
+                    {/* Scrim: transparent over the garment, deepening at the foot
+                        of the card so the name stays legible on any photo. */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background:
+                          'linear-gradient(to top,' +
+                          ' rgba(16,10,11,0.88) 0%,' +
+                          ' rgba(16,10,11,0.72) 10%,' +
+                          ' rgba(16,10,11,0.50) 20%,' +
+                          ' rgba(16,10,11,0.30) 30%,' +
+                          ' rgba(16,10,11,0.15) 40%,' +
+                          ' rgba(16,10,11,0.05) 50%,' +
+                          ' rgba(16,10,11,0) 62%)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+
+                    {/* Name, set into the photo */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        bottom: 18,
+                        textAlign: 'center',
+                        padding: '0 12px',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      <div style={{ ...Ser(19, 400, C.cream), lineHeight: 1.2 }}>{col.name}</div>
+                      <div
+                        style={{
+                          width: 26,
+                          height: 1,
+                          background: C.gold,
+                          margin: '8px auto 0',
+                          opacity: 0.85,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Products grid */}
+        <div style={{ padding: pagePad(40) }}>
+          <h2 style={{ ...Ser(32, 300, C.ink), fontSize: fluid(24, 32, 5), marginBottom: 28 }}>New Arrivals</h2>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 40, ...F(14, 400, '#888') }}>Loading...</div>
+          ) : (
+            <>
+              {/* One scrolling row, same as the offers and category strips.
+                  The full catalogue lives behind Show All. */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 'clamp(10px, 2.5vw, 20px)',
+                  overflowX: 'auto',
+                  paddingBottom: 8,
+                  scrollSnapType: 'x mandatory',
+                  WebkitOverflowScrolling: 'touch',
+                }}
+              >
+                {products.map((product) => (
+                  <div
+                    key={product._id}
+                    style={{
+                      flex: isMobile ? '0 0 62vw' : '0 0 240px',
+                      scrollSnapAlign: 'start',
+                    }}
+                  >
+                    <ProductCard product={product} />
+                  </div>
+                ))}
+              </div>
+
+              <ShowAll to="/category/all" />
+            </>
           )}
         </div>
 
-        {/* Additional sections */}
+        {/* Best Sellers — products tagged in the admin */}
+        {!loading && bestSellers.length > 0 && (
+          <div style={{ padding: pagePad(20) }}>
+            <h2 style={{ ...Ser(28, 300, C.ink), fontSize: fluid(22, 28, 5), marginBottom: 20 }}>Best Sellers</h2>
+            <div
+              style={{
+                display: 'flex',
+                gap: 'clamp(10px, 2.5vw, 20px)',
+                overflowX: 'auto',
+                paddingBottom: 8,
+                scrollSnapType: 'x mandatory',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              {bestSellers.map((product) => (
+                <div
+                  key={product._id}
+                  style={{
+                    flex: isMobile ? '0 0 62vw' : '0 0 240px',
+                    scrollSnapAlign: 'start',
+                  }}
+                >
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </div>
+            <ShowAll to="/category/all?tag=bestSeller" />
+          </div>
+        )}
+
+        {/* On Sale — only products carrying a discount */}
+        {!loading && discounted.length > 0 && (
+          <div style={{ padding: pagePad(20) }}>
+            <h2 style={{ ...Ser(28, 300, C.ink), fontSize: fluid(22, 28, 5), marginBottom: 20 }}>On Sale</h2>
+            <div
+              style={{
+                display: 'flex',
+                gap: 'clamp(10px, 2.5vw, 20px)',
+                overflowX: 'auto',
+                paddingBottom: 8,
+                scrollSnapType: 'x mandatory',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              {discounted.map((product) => (
+                <div
+                  key={product._id}
+                  style={{
+                    flex: isMobile ? '0 0 62vw' : '0 0 240px',
+                    scrollSnapAlign: 'start',
+                  }}
+                >
+                  <ProductCard product={product} />
+                </div>
+              ))}
+            </div>
+            <ShowAll to="/category/all?sale=true" />
+          </div>
+        )}
+
         <RecentlyViewed />
         <TestimonialsSection />
         <NewsletterSection />
-
-        
       </div>
     </Layout>
   );
@@ -2725,123 +4502,147 @@ export default function PaymentPage() {
   const [searchParams] = useSearchParams();
   const orderNumber = searchParams.get("order") || "ABR-00000000";
   const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("card");
-  const [card, setCard] = useState({ number: "", expiry: "", cvc: "" });
+  const [paymentMethod, setPaymentMethod] = useState("zaad");
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   const handlePay = () => {
-    if (paymentMethod === "card" && (!card.number || !card.expiry || !card.cvc)) {
-      alert("Please fill in card details.");
-      return;
+    if (paymentMethod === "zaad" || paymentMethod === "edahab") {
+      if (!phoneNumber || phoneNumber.length < 10) {
+        alert("Please enter a valid phone number (e.g., 0651234567)");
+        return;
+      }
     }
+
     setLoading(true);
+    // In production, this would call the payment API
     setTimeout(() => {
       setLoading(false);
       navigate(`/order-confirmed?order=${orderNumber}`);
     }, 1500);
   };
 
+  const paymentMethods = [
+    { value: "zaad", label: "Zaad", icon: "📱", desc: "Telesom" },
+    { value: "edahab", label: "eDahab", icon: "📱", desc: "Somcable" },
+    { value: "applepay", label: "Apple Pay", icon: "🍎", desc: "Apple Wallet" },
+    { value: "googlepay", label: "Google Pay", icon: "🤖", desc: "Google Wallet" },
+    { value: "card", label: "Card", icon: "💳", desc: "Credit/Debit" },
+    { value: "paypal", label: "PayPal", icon: "💰", desc: "PayPal" },
+    { value: "cod", label: "Cash on Delivery", icon: "💵", desc: "Pay on arrival" },
+  ];
+
   return (
     <Layout>
-    <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
-        <div style={{ maxWidth: 500, width: "100%", background: C.white, border: `0.5px solid ${C.border}`, padding: "36px" }}>
-          <div style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Payment</div>
-          <div style={{ ...F(12, 400, "#888"), marginBottom: 24 }}>Order: {orderNumber}</div>
+      <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
+          <div style={{ maxWidth: 520, width: "100%", background: C.white, border: `0.5px solid ${C.border}`, padding: "36px", borderRadius: 12 }}>
+            <div style={{ ...Ser(28, 300, C.ink), marginBottom: 8 }}>Payment</div>
+            <div style={{ ...F(12, 400, "#888"), marginBottom: 24 }}>Order: {orderNumber}</div>
 
-          {/* Payment method selector */}
-          <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
-            {['card', 'applepay', 'mada'].map(method => (
-              <div
-                key={method}
-                onClick={() => setPaymentMethod(method)}
-                style={{
-                  flex: 1,
-                  border: `1px solid ${paymentMethod === method ? C.brandRed : C.border}`,
-                  background: paymentMethod === method ? "#F5F0E8" : "transparent",
-                  padding: "10px",
-                  textAlign: "center",
-                  cursor: "pointer",
-                  ...F(11, 400, C.ink),
-                }}
-              >
-                {method === 'card' && '💳 Card'}
-                {method === 'applepay' && '🍎 Apple Pay'}
-                {method === 'mada' && '🏦 Mada'}
+            {/* Payment method selector */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: 12, marginBottom: 24 }}>
+              {paymentMethods.map((method) => (
+                <div
+                  key={method.value}
+                  onClick={() => setPaymentMethod(method.value)}
+                  style={{
+                    border: `2px solid ${paymentMethod === method.value ? C.brandRed : C.border}`,
+                    background: paymentMethod === method.value ? C.cream : "transparent",
+                    padding: "12px 8px",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    borderRadius: 8,
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <div style={{ fontSize: 24 }}>{method.icon}</div>
+                  <div style={{ ...F(11, 500, C.ink), marginTop: 4 }}>{method.label}</div>
+                  <div style={{ ...F(8, 400, "#888") }}>{method.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Phone number input for Zaad/eDahab */}
+            {(paymentMethod === "zaad" || paymentMethod === "edahab") && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>
+                  Phone Number
+                </div>
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="065 123 4567"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    border: `0.5px solid ${C.border}`,
+                    borderRadius: 8,
+                    ...F(14, 400, C.ink),
+                    outline: "none",
+                  }}
+                />
+                <div style={{ ...F(9, 400, "#888"), marginTop: 6 }}>
+                  Enter your {paymentMethod === "zaad" ? "Zaad" : "eDahab"} registered number
+                </div>
+                <div style={{ ...F(9, 400, C.gold), marginTop: 4 }}>
+                  You will receive a payment request on this number
+                </div>
               </div>
-            ))}
+            )}
+
+            {/* Payment method info */}
+            {(paymentMethod === "applepay" || paymentMethod === "googlepay" || paymentMethod === "card" || paymentMethod === "paypal") && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ background: "#F0F7FF", padding: "12px 16px", borderRadius: 8, border: `0.5px solid #BBDEFB` }}>
+                  <div style={{ ...F(10, 500, C.ink) }}>
+                    {paymentMethod === "applepay" && "🍎 Apple Pay"}
+                    {paymentMethod === "googlepay" && "🤖 Google Pay"}
+                    {paymentMethod === "card" && "💳 Card Payment"}
+                    {paymentMethod === "paypal" && "💰 PayPal"}
+                  </div>
+                  <div style={{ ...F(10, 400, "#888"), marginTop: 4, lineHeight: 1.6 }}>
+                    You'll be redirected to complete your payment securely.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {paymentMethod === "cod" && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ background: "#FFF8E1", padding: "12px 16px", borderRadius: 8, border: `0.5px solid #FFE082` }}>
+                  <div style={{ ...F(10, 500, C.ink) }}>💵 Cash on Delivery</div>
+                  <div style={{ ...F(10, 400, "#888"), marginTop: 4, lineHeight: 1.6 }}>
+                    Pay in cash when your order arrives. No payment needed now.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handlePay}
+              disabled={loading}
+              style={{
+                width: "100%",
+                padding: "14px",
+                background: loading ? "#888" : C.brandRed,
+                color: C.cream,
+                border: "none",
+                borderRadius: 8,
+                ...F(11, 500, C.cream),
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                cursor: loading ? "not-allowed" : "pointer",
+              }}
+            >
+              {loading ? "Processing..." : `Pay with ${paymentMethod === "zaad" ? "Zaad" : paymentMethod === "edahab" ? "eDahab" : paymentMethod === "applepay" ? "Apple Pay" : paymentMethod === "googlepay" ? "Google Pay" : paymentMethod === "card" ? "Card" : paymentMethod === "paypal" ? "PayPal" : "Cash"}`}
+            </button>
           </div>
-
-          {paymentMethod === "card" && (
-            <div>
-              <input
-                placeholder="Card Number"
-                value={card.number}
-                onChange={(e) => setCard({ ...card, number: e.target.value })}
-                style={fieldStyle}
-              />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-                <input
-                  placeholder="MM/YY"
-                  value={card.expiry}
-                  onChange={(e) => setCard({ ...card, expiry: e.target.value })}
-                  style={{ ...fieldStyle, marginBottom: 0 }}
-                />
-                <input
-                  placeholder="CVC"
-                  value={card.cvc}
-                  onChange={(e) => setCard({ ...card, cvc: e.target.value })}
-                  style={{ ...fieldStyle, marginBottom: 0 }}
-                />
-              </div>
-            </div>
-          )}
-
-          {paymentMethod === "applepay" && (
-            <div style={{ ...F(12, 400, "#888"), textAlign: "center", marginBottom: 20 }}>
-              You will be redirected to Apple Pay.
-            </div>
-          )}
-
-          {paymentMethod === "mada" && (
-            <div style={{ ...F(12, 400, "#888"), textAlign: "center", marginBottom: 20 }}>
-              Mada secure payment gateway.
-            </div>
-          )}
-
-          <button
-            onClick={handlePay}
-            disabled={loading}
-            style={{
-              width: "100%",
-              padding: "14px",
-              background: loading ? "#888" : C.brandRed,
-              color: C.cream,
-              border: "none",
-              ...F(11, 500, C.cream),
-              letterSpacing: 2,
-              textTransform: "uppercase",
-              cursor: "pointer",
-            }}
-          >
-            {loading ? "Processing..." : `Pay with ${paymentMethod === 'card' ? 'Card' : paymentMethod === 'applepay' ? 'Apple Pay' : 'Mada'}`}
-          </button>
         </div>
       </div>
-     
-    </div>
     </Layout>
   );
-}
-
-const fieldStyle = {
-  width: "100%",
-  border: "0.5px solid #DDD",
-  padding: "11px",
-  marginBottom: 12,
-  ...{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#1A1A1A" },
-  outline: "none",
-  boxSizing: "border-box",
-};FILE: src/pages/SizeGuidePage.jsx
+}FILE: src/pages/SizeGuidePage.jsx
 import Layout from "../components/Layout";
 import { C, F, Ser } from "../designTokens";
 
@@ -3108,7 +4909,7 @@ export default function SearchPage() {
   return (
     <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "28px 64px" }}>
+      <div style={{ padding: "28px clamp(16px, 5vw, 64px)" }}>
         {/* Search Input */}
         <form onSubmit={handleSubmit} style={{ display: "flex", marginBottom: 24 }}>
           <input
@@ -3159,7 +4960,7 @@ export default function SearchPage() {
             No products found. Try a different keyword.
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(240px, 46%), 1fr))", gap: 'clamp(10px, 2.5vw, 20px)' }}>
             {products.map(product => (
               <ProductCard key={product._id} product={product} />
             ))}
@@ -3176,8 +4977,10 @@ import { Link, useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
+import { useIsMobile } from "../responsive";
 
 export default function SignUpPage() {
+  const isMobile = useIsMobile();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -3204,14 +5007,14 @@ export default function SignUpPage() {
   return (
     <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ flex: 1, display: "flex" }}>
-        <div style={{ flex: 1, background: `linear-gradient(135deg, ${C.brandRed}, ${C.brandRed})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row" }}>
+        <div style={{ flex: 1, background: `linear-gradient(135deg, ${C.brandRed}, ${C.brandRed})`, display: isMobile ? "none" : "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ ...Ser(64, 300, C.cream) }}>abyr</div>
             <div style={{ ...F(10, 300, C.gold), letterSpacing: 4, marginTop: 8, textTransform: "uppercase" }}>Join us</div>
           </div>
         </div>
-        <div style={{ width: 460, padding: "48px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <div style={{ width: isMobile ? "100%" : 460, padding: isMobile ? "32px clamp(20px, 6vw, 48px)" : "48px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <div style={{ ...Ser(28, 300, C.ink), marginBottom: 4 }}>Create Account</div>
           <div style={{ ...F(11, 400, "#888"), marginBottom: 28 }}>Join Abyr Line for exclusive access</div>
           {error && <div style={{ background: "#FFEBEE", color: C.red, padding: "10px 14px", marginBottom: 20, ...F(10, 400) }}>{error}</div>}
@@ -3256,8 +5059,10 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 import { C, F, Ser } from "../designTokens";
+import { useIsMobile } from "../responsive";
 
 export default function SignInPage() {
+  const isMobile = useIsMobile();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -3284,10 +5089,10 @@ export default function SignInPage() {
   return (
     <Layout>
     <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ flex: 1, display: "flex" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row" }}>
         {/* … same JSX as before, no changes needed ... */}
         {/* Left side */}
-        <div style={{ flex: 1, background: `linear-gradient(135deg, ${C.brandRed}, ${C.brandRed})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ flex: 1, background: `linear-gradient(135deg, ${C.brandRed}, ${C.brandRed})`, display: isMobile ? "none" : "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ ...Ser(64, 300, C.cream) }}>abyr</div>
             <div style={{ ...F(10, 300, C.gold), letterSpacing: 4, marginTop: 8, textTransform: "uppercase" }}>Hargeisa · Online</div>
@@ -3295,7 +5100,7 @@ export default function SignInPage() {
         </div>
 
         {/* Right side */}
-        <div style={{ width: 460, padding: "48px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <div style={{ width: isMobile ? "100%" : 460, padding: isMobile ? "32px clamp(20px, 6vw, 48px)" : "48px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <div style={{ ...Ser(28, 300, C.ink), marginBottom: 4 }}>Welcome back</div>
           <div style={{ ...F(11, 400, "#888"), marginBottom: 28 }}>Sign in to your Abyr account</div>
           {error && <div style={{ background: "#FFEBEE", color: C.red, padding: "10px 14px", marginBottom: 20, ...F(10, 400) }}>{error}</div>}
@@ -3460,25 +5265,38 @@ export default function OrderConfirmedPage() {
     </Layout>
   );
 }FILE: src/pages/SettingsPage.jsx
-import { useState } from "react";
-import Layout from "../components/Layout";
-import { useAuth } from "../context/AuthContext";
-import { C, F, Ser } from "../designTokens";
+import { useState } from 'react';
+import ChangePasswordModal from '../components/ChangePasswordModal';
+import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
+import { C, F, Ser } from '../designTokens';
 
 export default function SettingsPage({ standalone = true }) {
   const { logout } = useAuth();
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   const handleSignOut = () => {
     logout();
   };
 
   const content = (
-    <div style={{ padding: standalone ? "28px 64px" : "0" }}>
+    <div style={{ padding: standalone ? '28px clamp(16px, 5vw, 64px)' : '0' }}>
       <div style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Settings</div>
       <div style={{ marginBottom: 28 }}>
-        <div style={{ ...F(11, 400, "#888"), marginBottom: 8 }}>Account security</div>
-        <div style={{ ...F(13, 400, C.ink), padding: "12px 0", borderBottom: "0.5px solid #EEE", cursor: "not-allowed", opacity: 0.6 }}>
+        <div style={{ ...F(11, 400, '#888'), marginBottom: 8 }}>Account security</div>
+        <div
+          onClick={() => setShowPasswordModal(true)}
+          style={{
+            ...F(13, 400, C.ink),
+            padding: '12px 0',
+            borderBottom: '0.5px solid #EEE',
+            cursor: 'pointer',
+            transition: 'color 0.15s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.color = C.brandRed}
+          onMouseLeave={(e) => e.currentTarget.style.color = C.ink}
+        >
           Change password
         </div>
       </div>
@@ -3487,28 +5305,32 @@ export default function SettingsPage({ standalone = true }) {
         style={{
           background: C.red,
           color: C.white,
-          border: "none",
-          padding: "12px 28px",
+          border: 'none',
+          padding: '12px 28px',
           ...F(11, 500),
           letterSpacing: 2,
-          textTransform: "uppercase",
-          cursor: "pointer",
+          textTransform: 'uppercase',
+          cursor: 'pointer',
         }}
       >
         Sign Out
       </button>
       {showConfirm && (
-        <div style={{ marginTop: 12, background: "#FFEBEE", padding: 12 }}>
+        <div style={{ marginTop: 12, background: '#FFEBEE', padding: 12 }}>
           <div style={{ ...F(10, 400, C.red), marginBottom: 8 }}>Are you sure you want to sign out?</div>
-          <div style={{ display: "flex", gap: 12 }}>
-            <button onClick={handleSignOut} style={{ background: C.red, color: C.white, border: "none", padding: "6px 14px", ...F(10, 500), cursor: "pointer" }}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button onClick={handleSignOut} style={{ background: C.red, color: C.white, border: 'none', padding: '6px 14px', ...F(10, 500), cursor: 'pointer' }}>
               Yes, Sign Out
             </button>
-            <button onClick={() => setShowConfirm(false)} style={{ background: "#EEE", color: "#666", border: "none", padding: "6px 14px", ...F(10, 500), cursor: "pointer" }}>
+            <button onClick={() => setShowConfirm(false)} style={{ background: '#EEE', color: '#666', border: 'none', padding: '6px 14px', ...F(10, 500), cursor: 'pointer' }}>
               Cancel
             </button>
           </div>
         </div>
+      )}
+
+      {showPasswordModal && (
+        <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />
       )}
     </div>
   );
@@ -3517,10 +5339,9 @@ export default function SettingsPage({ standalone = true }) {
 
   return (
     <Layout>
-    <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {content}
-    
-    </div>
+      <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {content}
+      </div>
     </Layout>
   );
 }FILE: src/pages/FavouritesPage.jsx
@@ -3557,7 +5378,7 @@ export default function FavouritesPage({ standalone = true }) {
     return <EmptyState title="No favourites yet" message="Save items you love and they'll appear here." icon="❤️" showShopButton={true} />;
   }
   const content = (
-    <div style={{ padding: standalone ? "28px 64px" : "0" }}>
+    <div style={{ padding: standalone ? "28px clamp(16px, 5vw, 64px)" : "0" }}>
       <h1 style={{ ...Ser(32, 300, C.ink), marginBottom: 28 }}>My Favourites</h1>
       {loading ? (
         <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>Loading...</div>
@@ -3566,7 +5387,7 @@ export default function FavouritesPage({ standalone = true }) {
           No favourites yet. Tap the heart on any product to add it here.
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(240px, 46%), 1fr))", gap: 'clamp(10px, 2.5vw, 20px)' }}>
           {favourites.map(fav => (
             <ProductCard key={fav._id} product={fav.product} />
           ))}
@@ -3591,8 +5412,10 @@ import EmptyState from "../components/EmptyState";
 import Layout from "../components/Layout";
 import { useCart } from "../context/CartContext";
 import { C, Cap, F, Ser } from "../designTokens";
+import { useIsMobile } from "../responsive";
 
 export default function CartPage() {
+  const isMobile = useIsMobile();
   const { cart, updateQuantity, removeFromCart } = useCart();
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -3610,12 +5433,12 @@ export default function CartPage() {
   return (
     <Layout>
       <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, padding: "28px 64px", display: "grid", gridTemplateColumns: "1fr 340px", gap: 48, alignItems: "start" }}>
+        <div style={{ flex: 1, padding: "28px clamp(16px, 5vw, 64px)", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 340px", gap: "clamp(24px, 4vw, 48px)", alignItems: "start" }}>
           <div>
             <h1 style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Shopping Bag ({cart.length})</h1>
             {cart.map((item) => (
               <div key={item._id} style={{ display: "flex", gap: 18, paddingBottom: 20, marginBottom: 20, borderBottom: `0.5px solid ${C.border}` }}>
-                <div style={{ width: 90, height: 110, background: "#EDE8E0", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: "clamp(72px, 22vw, 90px)", height: "clamp(88px, 27vw, 110px)", background: "#EDE8E0", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {item.imageUrl ? (
                     <img src={item.imageUrl} alt={item.name} style={{ maxHeight: "100%", maxWidth: "100%" }} />
                   ) : (
@@ -3677,11 +5500,13 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { C, F, Ser } from "../designTokens";
+import { useIsMobile } from "../responsive";
 
 const getSavedAddresses = () =>
   JSON.parse(localStorage.getItem("savedAddresses") || "[]");
 
 export default function CheckoutPage() {
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const { cart, clearCart } = useCart();
   const { addToast } = useToast();
@@ -3699,9 +5524,12 @@ export default function CheckoutPage() {
     phone: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const total = subtotal;
+  const deliveryFee = subtotal >= 200 ? 0 : 25;
+  const total = subtotal + deliveryFee;
 
   const handleSaveAddress = () => {
     if (!newAddress.name || !newAddress.line1 || !newAddress.city) return;
@@ -3719,16 +5547,27 @@ export default function CheckoutPage() {
       addToast("Please select or add an address", "error");
       return;
     }
+    if (!paymentMethod) {
+      addToast("Please select a payment method", "error");
+      return;
+    }
+    // For Zaad/eDahab, require phone number
+    if ((paymentMethod === "zaad" || paymentMethod === "edahab") && !phoneNumber) {
+      addToast("Please enter your phone number for mobile money", "error");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const orderData = {
         items: cart.map((item) => ({
-          productId: item.product?._id,    // ✅ server cart item has populated product
+          productId: item.product?._id,
           quantity: item.quantity,
           size: item.size || "M",
         })),
         shippingAddress: selectedAddress,
-        paymentMethod: "cod",
+        paymentMethod: paymentMethod,
+        phoneNumber: (paymentMethod === "zaad" || paymentMethod === "edahab") ? phoneNumber : undefined,
       };
       const res = await api.post("/orders", orderData);
       clearCart();
@@ -3740,7 +5579,7 @@ export default function CheckoutPage() {
       setSubmitting(false);
     }
   };
-  
+
   if (cart.length === 0) {
     return (
       <Layout>
@@ -3757,6 +5596,7 @@ export default function CheckoutPage() {
                 ...F(11, 500, C.cream),
                 letterSpacing: 2,
                 textTransform: "uppercase",
+                borderRadius: 4,
               }}
             >
               Continue Shopping
@@ -3769,10 +5609,11 @@ export default function CheckoutPage() {
 
   return (
     <Layout>
-      <div style={{ flex: 1, maxWidth: 1100, margin: "2rem auto", padding: "0 1rem", width: "100%" }}>
+      <div style={{ flex: 1, maxWidth: 1100, margin: "2rem auto", padding: "0 clamp(16px, 4vw, 24px)", width: "100%" }}>
         <h1 style={{ ...Ser(28, 300, C.ink), marginBottom: 24 }}>Checkout</h1>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "2rem" }}>
           <form onSubmit={handleSubmit} style={{ flex: 2, minWidth: 280 }}>
+            {/* Delivery Address */}
             <div style={{ marginBottom: "1.5rem" }}>
               <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
                 Delivery Address
@@ -3790,6 +5631,7 @@ export default function CheckoutPage() {
                         padding: "14px",
                         marginBottom: 8,
                         cursor: "pointer",
+                        borderRadius: 4,
                       }}
                     >
                       <div style={{ ...F(11, 500, C.ink) }}>{addr.name}</div>
@@ -3813,6 +5655,7 @@ export default function CheckoutPage() {
                     cursor: "pointer",
                     letterSpacing: 1,
                     marginBottom: 16,
+                    borderRadius: 4,
                   }}
                 >
                   + Add new address
@@ -3835,12 +5678,12 @@ export default function CheckoutPage() {
                     <button type="button" onClick={handleSaveAddress}
                       style={{ flex: 1, background: C.brandRed, color: C.cream, border: "none",
                         padding: "10px 0", ...F(10, 500, C.cream), letterSpacing: 1,
-                        textTransform: "uppercase", cursor: "pointer" }}>
+                        textTransform: "uppercase", cursor: "pointer", borderRadius: 4 }}>
                       Save Address
                     </button>
                     <button type="button" onClick={() => setShowAddForm(false)}
                       style={{ border: "0.5px solid #CCC", background: "white", padding: "10px 16px",
-                        ...F(10, 400, "#888"), cursor: "pointer" }}>
+                        ...F(10, 400, "#888"), cursor: "pointer", borderRadius: 4 }}>
                       Cancel
                     </button>
                   </div>
@@ -3848,19 +5691,123 @@ export default function CheckoutPage() {
               )}
             </div>
 
+            {/* Payment Method */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+                Payment Method
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3, 1fr)", gap: 12 }}>
+                {[
+                  { value: "zaad", label: "Zaad", icon: "📱", desc: "Telesom" },
+                  { value: "edahab", label: "eDahab", icon: "📱", desc: "Somcable" },
+                  { value: "applepay", label: "Apple Pay", icon: "🍎", desc: "Apple Wallet" },
+                  { value: "googlepay", label: "Google Pay", icon: "🤖", desc: "Google Wallet" },
+                  { value: "card", label: "Card", icon: "💳", desc: "Credit/Debit" },
+                  { value: "paypal", label: "PayPal", icon: "💰", desc: "PayPal" },
+                  { value: "cod", label: "Cash on Delivery", icon: "💵", desc: "Pay on arrival" },
+                ].map((method) => (
+                  <div
+                    key={method.value}
+                    onClick={() => setPaymentMethod(method.value)}
+                    style={{
+                      border: `2px solid ${paymentMethod === method.value ? C.brandRed : C.border}`,
+                      background: paymentMethod === method.value ? C.cream : C.white,
+                      padding: "12px 8px",
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      textAlign: "center",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <div style={{ fontSize: 24, marginBottom: 2 }}>{method.icon}</div>
+                    <div style={{ ...F(10, 500, C.ink) }}>{method.label}</div>
+                    <div style={{ ...F(8, 400, "#888") }}>{method.desc}</div>
+                    {paymentMethod === method.value && (
+                      <div style={{ marginTop: 4, color: C.brandRed, ...F(8, 600) }}>✓</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Phone number for Zaad/eDahab */}
+              {(paymentMethod === "zaad" || paymentMethod === "edahab") && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>
+                    Mobile Number
+                  </div>
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="065 123 4567"
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: `0.5px solid ${C.border}`,
+                      borderRadius: 4,
+                      ...F(13, 400, C.ink),
+                      outline: "none",
+                    }}
+                  />
+                  <div style={{ ...F(9, 400, "#888"), marginTop: 4 }}>
+                    You'll receive a payment request on this number
+                  </div>
+                </div>
+              )}
+
+              {/* Payment method info */}
+              <div style={{ marginTop: 12 }}>
+                {paymentMethod === "zaad" && (
+                  <div style={{ background: C.cream, padding: "10px 14px", borderRadius: 4 }}>
+                    <div style={{ ...F(10, 500, C.ink) }}>📱 Pay with Telesom Zaad</div>
+                    <div style={{ ...F(9, 400, "#888"), marginTop: 2 }}>You'll get a Zaad payment request on your phone.</div>
+                  </div>
+                )}
+                {paymentMethod === "edahab" && (
+                  <div style={{ background: C.cream, padding: "10px 14px", borderRadius: 4 }}>
+                    <div style={{ ...F(10, 500, C.ink) }}>📱 Pay with Somcable eDahab</div>
+                    <div style={{ ...F(9, 400, "#888"), marginTop: 2 }}>You'll get an eDahab payment request on your phone.</div>
+                  </div>
+                )}
+                {(paymentMethod === "applepay" || paymentMethod === "googlepay" || paymentMethod === "card" || paymentMethod === "paypal") && (
+                  <div style={{ background: C.cream, padding: "10px 14px", borderRadius: 4 }}>
+                    <div style={{ ...F(10, 500, C.ink) }}>
+                      {paymentMethod === "applepay" && "🍎 Apple Pay"}
+                      {paymentMethod === "googlepay" && "🤖 Google Pay"}
+                      {paymentMethod === "card" && "💳 Credit/Debit Card"}
+                      {paymentMethod === "paypal" && "💰 PayPal"}
+                    </div>
+                    <div style={{ ...F(9, 400, "#888"), marginTop: 2 }}>
+                      You'll be redirected to complete your payment securely.
+                    </div>
+                  </div>
+                )}
+                {paymentMethod === "cod" && (
+                  <div style={{ background: C.cream, padding: "10px 14px", borderRadius: 4 }}>
+                    <div style={{ ...F(10, 500, C.ink) }}>💵 Cash on Delivery</div>
+                    <div style={{ ...F(9, 400, "#888"), marginTop: 2 }}>Pay in cash when your order arrives.</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <button type="submit" disabled={submitting}
               style={{
                 marginTop: "1rem", width: "100%", padding: "1rem", background: C.brandRed,
                 color: C.cream, border: "none", ...F(11, 500, C.cream), letterSpacing: 2,
                 textTransform: "uppercase", cursor: submitting ? "not-allowed" : "pointer",
-                opacity: submitting ? 0.7 : 1,
+                opacity: submitting ? 0.7 : 1, borderRadius: 4,
               }}>
               {submitting ? "Processing..." : `Place Order – ${total.toFixed(2)} SAR`}
             </button>
           </form>
 
-          <div style={{ flex: 1, background: C.cream, padding: "1.5rem", border: `0.5px solid ${C.border}` }}>
-            <div style={{ ...Cap(C.tan), marginBottom: 18 }}>Order Summary</div>
+          {/* Order Summary */}
+          <div style={{ flex: 1, background: C.cream, padding: "1.5rem", border: `0.5px solid ${C.border}`, borderRadius: 8 }}>
+            <div style={{ ...F(9, 500, C.tan), letterSpacing: 2, textTransform: "uppercase", marginBottom: 18 }}>
+              Order Summary
+            </div>
             {cart.map((item) => (
               <div key={item._id} style={{ display: "flex", justifyContent: "space-between",
                 marginBottom: "0.5rem", ...F(11, 400, C.ink) }}>
@@ -3868,6 +5815,17 @@ export default function CheckoutPage() {
                 <span>{(item.price * item.quantity).toFixed(2)} SAR</span>
               </div>
             ))}
+            <div style={{ height: 1, background: "#DDD", margin: "14px 0" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ ...F(11, 400, "#888") }}>Subtotal</span>
+              <span style={{ ...F(11, 400, C.ink) }}>{subtotal.toFixed(2)} SAR</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ ...F(11, 400, "#888") }}>Delivery</span>
+              <span style={{ ...F(11, 400, deliveryFee === 0 ? C.green : C.ink) }}>
+                {deliveryFee === 0 ? "Free" : `${deliveryFee.toFixed(2)} SAR`}
+              </span>
+            </div>
             <div style={{ height: 1, background: "#DDD", margin: "14px 0" }} />
             <div style={{ display: "flex", justifyContent: "space-between", ...F(13, 500, C.ink), marginTop: "1rem" }}>
               <span>Total</span>
@@ -3890,31 +5848,25 @@ const inputStyle = {
   outline: "none",
   marginBottom: "0.75rem",
   display: "block",
-};
-
-const Cap = (c = C.tan) => ({
-  fontFamily: "'DM Sans', sans-serif",
-  fontSize: 9,
-  color: c,
-  letterSpacing: 2,
-  textTransform: "uppercase",
-});FILE: src/pages/OrdersPage.jsx
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import api from "../api";
-import EmptyState from "../components/EmptyState";
-import Layout from "../components/Layout";
-import { useAuth } from "../context/AuthContext";
-import { C, F, Ser } from "../designTokens";
+};FILE: src/pages/OrdersPage.jsx
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import api from '../api';
+import EmptyState from '../components/EmptyState';
+import Layout from '../components/Layout';
+import OrderDetailModal from '../components/OrderDetailModal';
+import { useAuth } from '../context/AuthContext';
+import { C, F, Ser } from '../designTokens';
 
 export default function OrdersPage({ standalone = true }) {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   useEffect(() => {
     if (!user) return;
-    api.get("/orders")
+    api.get('/orders')
       .then((res) => setOrders(res.data))
       .catch((err) => console.error(err))
       .finally(() => setLoading(false));
@@ -3922,14 +5874,14 @@ export default function OrdersPage({ standalone = true }) {
 
   if (!user) {
     return (
-      <div style={{ textAlign: "center", padding: 40, ...F(14, 400, "#888") }}>
+      <div style={{ textAlign: 'center', padding: 40, ...F(14, 400, '#888') }}>
         Please sign in to view your orders.
       </div>
     );
   }
 
   if (loading) {
-    return <div style={{ ...F(14, 400, "#888"), padding: 40, textAlign: "center" }}>Loading...</div>;
+    return <div style={{ ...F(14, 400, '#888'), padding: 40, textAlign: 'center' }}>Loading...</div>;
   }
 
   if (orders.length === 0) {
@@ -3943,7 +5895,7 @@ export default function OrdersPage({ standalone = true }) {
   }
 
   const content = (
-    <div style={{ padding: standalone ? "28px 64px" : "0" }}>
+    <div style={{ padding: standalone ? '28px clamp(16px, 5vw, 64px)' : '0' }}>
       <h1 style={{ ...Ser(32, 300, C.ink), marginBottom: 24 }}>My Orders</h1>
       {orders.map((order) => (
         <div
@@ -3951,39 +5903,49 @@ export default function OrdersPage({ standalone = true }) {
           style={{
             border: `0.5px solid ${C.border}`,
             background: C.white,
-            padding: "16px",
+            padding: '16px',
             marginBottom: 16,
+            cursor: 'pointer',
           }}
+          onClick={() => setSelectedOrder(order)}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ ...F(11, 500, C.ink) }}>#{order.orderNumber}</span>
-            <span style={{ ...F(10, 400, "#888") }}>
+            <span style={{ ...F(10, 400, '#888') }}>
               {new Date(order.createdAt).toLocaleDateString()}
             </span>
           </div>
-          <div style={{ ...F(10, 400, "#888"), marginBottom: 4 }}>
+          <div style={{ ...F(10, 400, '#888'), marginBottom: 4 }}>
             {order.items?.length} item(s) · {order.status}
           </div>
           <div style={{ ...Ser(16, 300, C.tan) }}>SAR {parseFloat(order.total).toFixed(2)}</div>
-          <Link
-            to={`/tracking?order=${order.orderNumber}`}
-            style={{
-              ...F(10, 400, C.brandRed),
-              textDecoration: "underline",
-              marginTop: 8,
-              display: "inline-block",
-            }}
-          >
-            Track Order →
-          </Link>
+          <div style={{ marginTop: 8, display: 'flex', gap: 16 }}>
+            <span
+              onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); }}
+              style={{ ...F(10, 400, C.tan), cursor: 'pointer', letterSpacing: 1, textDecoration: 'underline' }}
+            >
+              View Details
+            </span>
+            <Link
+              to={`/tracking?order=${order.orderNumber}`}
+              onClick={(e) => e.stopPropagation()}
+              style={{ ...F(10, 400, C.brandRed), textDecoration: 'underline', cursor: 'pointer' }}
+            >
+              Track Order →
+            </Link>
+          </div>
         </div>
       ))}
+
+      {selectedOrder && (
+        <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+      )}
     </div>
   );
 
   return standalone ? (
     <Layout>
-      <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {content}
       </div>
     </Layout>
@@ -3991,37 +5953,240 @@ export default function OrdersPage({ standalone = true }) {
     content
   );
 }FILE: src/pages/AddressesPage.jsx
-import { useState } from "react";
-import Layout from "../components/Layout";
-import { C, F, Ser } from "../designTokens";
+import { useEffect, useState } from 'react';
+import api from '../api';
+import Layout from '../components/Layout';
+import { C, F, Ser } from '../designTokens';
+
+const EMPTY = { name: '', line1: '', city: '', phone: '' };
 
 export default function AddressesPage({ standalone = true }) {
-  const [addresses, setAddresses] = useState(
-    JSON.parse(localStorage.getItem("savedAddresses") || "[]")
-  );
+  const [addresses, setAddresses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(EMPTY);
+
+  // Load from the server, and move anything still sitting in this browser's
+  // localStorage up to the account once — then clear it, so the server is the
+  // only source of truth from here on.
+  useEffect(() => {
+    let alive = true;
+
+    const load = async () => {
+      try {
+        const res = await api.get('/addresses');
+        let list = res.data || [];
+
+        const legacy = JSON.parse(localStorage.getItem('savedAddresses') || '[]');
+        if (legacy.length > 0) {
+          for (const a of legacy) {
+            if (!a.name || !a.line1 || !a.city) continue;
+            const saved = await api.post('/addresses', a);
+            list = saved.data;
+          }
+          localStorage.removeItem('savedAddresses');
+        }
+
+        if (alive) setAddresses(list);
+      } catch (err) {
+        if (alive) setError(err?.response?.data?.message || 'Could not load your addresses.');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
+
+    load();
+    return () => { alive = false; };
+  }, []);
+
+  const openAdd = () => {
+    setForm(EMPTY);
+    setEditingId(null);
+    setError('');
+    setShowForm(true);
+  };
+
+  const openEdit = (addr) => {
+    setForm({ name: addr.name, line1: addr.line1, city: addr.city, phone: addr.phone || '' });
+    setEditingId(addr._id);
+    setError('');
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.name || !form.line1 || !form.city) {
+      setError('Name, address and city are required.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      // Both endpoints return the full updated list, so we just swap it in.
+      const res = editingId
+        ? await api.put(`/addresses/${editingId}`, form)
+        : await api.post('/addresses', form);
+      setAddresses(res.data);
+      setForm(EMPTY);
+      setEditingId(null);
+      setShowForm(false);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Could not save that address.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this address?')) return;
+    try {
+      const res = await api.delete(`/addresses/${id}`);
+      setAddresses(res.data);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Could not delete that address.');
+    }
+  };
 
   const content = (
-    <div style={{ padding: standalone ? "28px 64px" : "0" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+    <div style={{ padding: standalone ? '28px clamp(16px, 5vw, 64px)' : '0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
         <div style={{ ...Ser(28, 300, C.ink) }}>Addresses</div>
-        <div style={{ border: `0.5px solid ${C.brandRed}`, padding: "9px 18px", ...F(9, 400, C.brandRed), letterSpacing: 2, textTransform: "uppercase", cursor: "pointer" }}>
+        <button
+          onClick={openAdd}
+          style={{
+            border: `0.5px solid ${C.brandRed}`,
+            padding: '9px 18px',
+            ...F(9, 400, C.brandRed),
+            letterSpacing: 2,
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            background: 'transparent',
+          }}
+        >
           + ADD ADDRESS
-        </div>
+        </button>
       </div>
-      {addresses.length === 0 ? (
-        <div style={{ ...F(13, 400, "#888") }}>No addresses saved yet.</div>
+
+      {error && !showForm && (
+        <div style={{ background: '#FFEBEE', color: C.red, padding: '10px 14px', marginBottom: 16, ...F(11, 400) }}>
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ ...F(13, 400, '#888') }}>Loading…</div>
+      ) : addresses.length === 0 ? (
+        <div style={{ ...F(13, 400, '#888') }}>No addresses saved yet.</div>
       ) : (
-        addresses.map((addr, index) => (
-          <div key={index} style={{ border: `0.5px solid ${C.border}`, padding: "16px", marginBottom: 12, background: C.white }}>
-            <div style={{ ...F(12, 500, C.ink), marginBottom: 6 }}>{addr.name}</div>
-            <div style={{ ...F(11, 400, "#888"), lineHeight: 1.6 }}>{addr.line1}, {addr.city}</div>
-            {addr.phone && <div style={{ ...F(11, 400, "#888") }}>{addr.phone}</div>}
-            <div style={{ marginTop: 12, display: "flex", gap: 16 }}>
-              <span style={{ ...F(10, 400, C.tan), cursor: "pointer", letterSpacing: 1 }}>EDIT</span>
-              <span style={{ ...F(10, 400, C.red), cursor: "pointer", letterSpacing: 1 }}>DELETE</span>
+        addresses.map((addr) => (
+          <div
+            key={addr._id}
+            style={{
+              border: `0.5px solid ${C.border}`,
+              padding: '16px',
+              marginBottom: 12,
+              background: C.white,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <div style={{ ...F(12, 500, C.ink) }}>{addr.name}</div>
+              {addr.isDefault && (
+                <span style={{ ...F(8, 500, C.ink), background: C.gold, padding: '3px 8px', letterSpacing: 1, textTransform: 'uppercase' }}>
+                  Default
+                </span>
+              )}
+            </div>
+            <div style={{ ...F(11, 400, '#888'), lineHeight: 1.6 }}>
+              {addr.line1}, {addr.city}
+            </div>
+            {addr.phone && <div style={{ ...F(11, 400, '#888') }}>{addr.phone}</div>}
+            <div style={{ marginTop: 12, display: 'flex', gap: 16 }}>
+              <span onClick={() => openEdit(addr)} style={{ ...F(10, 400, C.tan), cursor: 'pointer', letterSpacing: 1 }}>
+                EDIT
+              </span>
+              <span onClick={() => handleDelete(addr._id)} style={{ ...F(10, 400, C.red), cursor: 'pointer', letterSpacing: 1 }}>
+                DELETE
+              </span>
             </div>
           </div>
         ))
+      )}
+
+      {/* Address form */}
+      {showForm && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 16,
+          }}
+          onClick={() => setShowForm(false)}
+        >
+          <div
+            style={{
+              background: C.white,
+              padding: '28px',
+              maxWidth: 400,
+              width: '100%',
+              border: `0.5px solid ${C.border}`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ ...Ser(24, 300, C.ink), marginBottom: 16 }}>
+              {editingId ? 'Edit Address' : 'Add Address'}
+            </div>
+
+            {error && (
+              <div style={{ background: '#FFEBEE', color: C.red, padding: '10px 14px', marginBottom: 12, ...F(11, 400) }}>
+                {error}
+              </div>
+            )}
+
+            <input placeholder="Full Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={inputStyle} />
+            <input placeholder="Address Line" value={form.line1} onChange={(e) => setForm({ ...form, line1: e.target.value })} style={inputStyle} />
+            <input placeholder="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} style={inputStyle} />
+            <input placeholder="Phone (optional)" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle} />
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                style={{
+                  flex: 1,
+                  background: saving ? '#888' : C.brandRed,
+                  color: C.cream,
+                  border: 'none',
+                  padding: '10px 0',
+                  ...F(10, 500, C.cream),
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                  cursor: saving ? 'default' : 'pointer',
+                }}
+              >
+                {saving ? 'Saving…' : editingId ? 'Update' : 'Save'}
+              </button>
+              <button
+                onClick={() => setShowForm(false)}
+                style={{
+                  border: `0.5px solid ${C.border}`,
+                  background: 'transparent',
+                  padding: '10px 16px',
+                  ...F(10, 400, '#888'),
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -4030,11 +6195,19 @@ export default function AddressesPage({ standalone = true }) {
 
   return (
     <Layout>
-    <div style={{ background: C.sand, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-     
-      {content}
-      
-    </div>
+      <div style={{ background: C.sand, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {content}
+      </div>
     </Layout>
   );
 }
+
+const inputStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  border: `0.5px solid ${C.border}`,
+  marginBottom: 12,
+  ...F(13, 400, C.ink),
+  outline: 'none',
+  boxSizing: 'border-box',
+};
