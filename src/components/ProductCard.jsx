@@ -6,6 +6,7 @@ import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { C, F, Ser } from "../designTokens";
 import QuickViewModal from "./QuickViewModal";
+import { defaultSizeOf } from "../utils/sizes";
 
 export default function ProductCard({ product }) {
   const { user } = useAuth();
@@ -52,10 +53,15 @@ export default function ProductCard({ product }) {
     }
   };
 
-  const handleAddToCart = (e) => {
+  // Quick add from the card uses the product's default size (shown in the message);
+  // shoppers pick another size on the product page.
+  const handleAddToCart = async (e) => {
     e.preventDefault();
-    addToCart(product, 1);
-    addToast("Added to cart", "success");
+    const size = defaultSizeOf(product);
+    const result = await addToCart(product, 1, size);
+    if (result === "signin") addToast("Sign in to add items to your cart", "info");
+    else if (result === "error") addToast("Couldn't add to cart. Please try again.", "error");
+    else addToast(`Added to cart · size ${size}`, "success");
   };
 
   // How much is off, worked out from the two prices the admin already stores.

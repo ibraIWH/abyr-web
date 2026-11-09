@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { C, F, Ser } from "../designTokens";
+import { defaultSizeOf, sizesOf } from "../utils/sizes";
 
 export default function QuickViewModal({ product, onClose }) {
-  const [selectedSize, setSelectedSize] = useState("M");
-  const sizes = ["XS", "S", "M", "L", "XL"];
+  const sizes = sizesOf(product); // the sizes saved on this product in the admin
+  const [selectedSize, setSelectedSize] = useState(() => defaultSizeOf(product));
 
   return (
     <div

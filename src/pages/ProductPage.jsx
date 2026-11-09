@@ -8,12 +8,13 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { C, F, Ser } from "../designTokens";
+import { defaultSizeOf, sizesOf } from "../utils/sizes";
 
 export default function ProductPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const { addToCart } = useCart();
-  const showToast = useToast();
+  const { addToast: showToast } = useToast(); // useToast() returns { addToast }, not a function
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState("M");
@@ -29,6 +30,8 @@ export default function ProductPage() {
     api.get(`/products/${id}`)
       .then((res) => {
         setProduct(res.data);
+        setSelectedSize(defaultSizeOf(res.data)); // e.g. 56 for an abaya sold in 54–60
+        setSelectedImageIndex(0);
         addToRecentlyViewed(res.data);
       })
       .catch((err) => console.error(err))
@@ -54,9 +57,17 @@ export default function ProductPage() {
     return () => observer.disconnect();
   }, [product]);
 
-  const handleAddToCart = () => {
-    addToCart(product, 1);
-    showToast("Added to cart", "success");
+  const handleAddToCart = async () => {
+    const result = await addToCart(product, 1, selectedSize); // send the size the shopper picked
+    if (result === "signin") {
+      showToast("Sign in to add items to your cart", "info");
+      return;
+    }
+    if (result === "error") {
+      showToast("Couldn't add to cart. Please try again.", "error");
+      return;
+    }
+    showToast(`Added to cart · size ${selectedSize}`, "success");
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
@@ -86,7 +97,7 @@ export default function ProductPage() {
   if (!product)
     return <div style={{ textAlign: "center", padding: 80, ...F(14, 400, C.red) }}>Product not found</div>;
 
-  const sizes = ["XS", "S", "M", "L", "XL"];
+  const sizes = sizesOf(product); // the sizes saved on this product in the admin
   const images =
     product.images && product.images.length > 0
       ? product.images

@@ -40,8 +40,10 @@ export const CartProvider = ({ children }) => {
 
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
+  // Returns 'added', 'signin' (the shopper isn't logged in) or 'error',
+  // so the button that called it can show the right message.
   const addToCart = async (product, quantity = 1, size = 'M') => {
-    if (!user) return;                             // must be logged in
+    if (!user) return 'signin';                    // must be logged in
     try {
       const res = await api.post('/cart', {
         productId: product._id,
@@ -49,8 +51,10 @@ export const CartProvider = ({ children }) => {
         size,
       });
       setCart(res.data.items);
+      return 'added';
     } catch (err) {
       console.error(err);
+      return 'error';
     }
   };
 
