@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import api from "../api";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
-import { useCart } from "../context/CartContext";
+import { useCart, productIdOf, lineKey } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { C, F, Ser } from "../designTokens";
 import { useIsMobile } from "../responsive";
@@ -67,7 +67,7 @@ export default function CheckoutPage() {
     try {
       const orderData = {
         items: cart.map((item) => ({
-          productId: item.product?._id,
+          productId: productIdOf(item),
           quantity: item.quantity,
           size: item.size || "M",
         })),
@@ -315,7 +315,7 @@ export default function CheckoutPage() {
               Order Summary
             </div>
             {cart.map((item) => (
-              <div key={item._id} style={{ display: "flex", justifyContent: "space-between",
+              <div key={lineKey(item)} style={{ display: "flex", justifyContent: "space-between",
                 marginBottom: "0.5rem", ...F(11, 400, C.ink) }}>
                 <span>{item.name} x{item.quantity}</span>
                 <span>{(item.price * item.quantity).toFixed(2)} SAR</span>

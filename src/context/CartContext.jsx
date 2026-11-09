@@ -10,6 +10,16 @@ export const useCart = () => {
   return ctx;
 };
 
+// Cart lines have no _id of their own (the backend schema is { _id: false }),
+// so a line is identified by its product + size.
+// `item.product` is a full product object when the cart comes from GET /cart,
+// and only the product's id after add/update calls, so handle both.
+export const productIdOf = (item) =>
+  item?.product && typeof item.product === 'object' ? item.product._id : item?.product;
+
+// A stable React key for a cart line.
+export const lineKey = (item) => `${productIdOf(item)}-${item?.size || 'M'}`;
+
 export const CartProvider = ({ children }) => {
   const { user } = useAuth();                      // current user (null if not logged in)
   const [cart, setCart] = useState([]);            // array of cart items
@@ -44,29 +54,25 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const updateQuantity = async (itemId, newQty) => {
+  // PUT /api/cart/item sets one line's quantity; 0 removes the line.
+  const setLineQuantity = async (item, quantity) => {
     if (!user) return;
-    if (newQty <= 0) {
-      removeFromCart(itemId);
-      return;
-    }
     try {
-      const res = await api.put(`/cart/${itemId}`, { quantity: newQty });
+      const res = await api.put('/cart/item', {
+        productId: productIdOf(item),
+        size: item.size || 'M',
+        quantity: Math.max(0, quantity),
+      });
       setCart(res.data.items);
     } catch (err) {
       console.error(err);
     }
   };
 
-  const removeFromCart = async (itemId) => {
-    if (!user) return;
-    try {
-      const res = await api.delete(`/cart/${itemId}`);
-      setCart(res.data.items);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  // Pass the whole cart line (not an id): updateQuantity(item, item.quantity + 1)
+  const updateQuantity = (item, newQty) => setLineQuantity(item, newQty);
+
+  const removeFromCart = (item) => setLineQuantity(item, 0);
 
   const clearCart = async () => {
     if (!user) return;
